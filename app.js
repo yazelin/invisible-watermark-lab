@@ -1,49 +1,68 @@
-/* app.js — 頁面互動。演算法一律走 pure.js / field.js / detect.js,這裡只接線與畫圖。 */
+/* app.js — 頁面互動。演算法一律走 pure.js / field.js / detect.js / keyimage.js,這裡只接線與畫圖。 */
 (function () {
   'use strict';
-  const P = window.IWL, F = window.IWL_FIELD, D = window.IWL_DETECT;
+  const P = window.IWL, F = window.IWL_FIELD, D = window.IWL_DETECT, K = window.IWL_KEY;
   const $ = (id) => document.getElementById(id);
+  const N = 16;
 
-  let N = 16, keyNodes = null, keyImg = null, artImg = null, stamped = null;
+  let secret = null, nodes = null, logoImg = null, artImg = null, stamped = null;
 
-  // ── 內建示範圖:純幾何,不用字型,任何機器算出來都一樣 ──
-  function demoKeyImage() {
-    const c = F.mkCanvas(256, 256), x = F.ctxOf(c);
-    x.fillStyle = '#111'; x.fillRect(0, 0, 256, 256);
-    x.fillStyle = '#fff';
-    x.beginPath(); x.arc(96, 96, 62, 0, 7); x.fill();
-    x.fillRect(120, 140, 110, 92);
-    x.fillStyle = '#888';
-    x.beginPath(); x.moveTo(20, 236); x.lineTo(96, 132); x.lineTo(150, 236); x.closePath(); x.fill();
-    return c;
+  // ── 步驟 1:金鑰 ──
+  function useSecret(s) {
+    if (!P.isSecret(s)) { alert('金鑰格式不對,應該長得像 IWL1-XXXXX-XXXXX-XXXXX-XXXXX'); return; }
+    secret = String(s).trim().toUpperCase();
+    nodes = P.nodesFromSecret(secret, N);
+    $('keyOut').hidden = false; $('fieldOut').hidden = false;
+    $('secretTxt').textContent = secret;
+    drawKeyCard(); drawField();
+    $('btnStamp').disabled = !artImg;
   }
-  function demoArtImage() {
-    const c = F.mkCanvas(900, 620), x = F.ctxOf(c);
-    const g = x.createLinearGradient(0, 0, 900, 620);
-    g.addColorStop(0, '#2b4a6f'); g.addColorStop(.5, '#7fa6c9'); g.addColorStop(1, '#f0d9b5');
-    x.fillStyle = g; x.fillRect(0, 0, 900, 620);
-    for (let i = 0; i < 26; i++) { // 幾塊色塊,讓它不是純漸層(純漸層太乾淨,不像真作品)
-      x.fillStyle = `hsla(${i * 37 % 360},55%,${45 + i % 30}%,.5)`;
-      x.beginPath(); x.arc(60 + (i * 137) % 820, 70 + (i * 211) % 480, 24 + (i * 13) % 70, 0, 7); x.fill();
+  const drawKeyCard = () => {
+    const card = K.render(secret, logoImg, N), c = $('cKeyCard');
+    c.width = card.width; c.height = card.height;
+    F.ctxOf(c).drawImage(card, 0, 0);
+  };
+  function drawField() {
+    F.drawFingerprint($('cFp'), nodes, N, 16);
+    F.drawField($('cField'), nodes, N, 1);
+    const t = $('cTile'); // 鋪滿:同一塊圖樣重複,所以任何碎片都含有完整圖樣
+    t.width = t.height = N * 16 * 2;
+    F.drawField(t, nodes, N, 2);
+    const a = $('cAmp'); // 真實振幅:±2/255,放大 40 倍才看得見
+    a.width = a.height = N * 16;
+    const x = F.ctxOf(a), im = x.createImageData(a.width, a.height), d = im.data;
+    const ss = (v) => v * v * (3 - 2 * v);
+    for (let y = 0; y < a.height; y++) {
+      const gy = y >> 4, fy = ss(((y & 15) + 0.5) / 16);
+      for (let xx = 0; xx < a.width; xx++) {
+        const gx = xx >> 4, fx = ss(((xx & 15) + 0.5) / 16);
+        const s = (P.nodeAt(nodes, N, gx, gy) * (1 - fx) + P.nodeAt(nodes, N, gx + 1, gy) * fx) * (1 - fy)
+                + (P.nodeAt(nodes, N, gx, gy + 1) * (1 - fx) + P.nodeAt(nodes, N, gx + 1, gy + 1) * fx) * fy;
+        const p = (y * a.width + xx) * 4, v = 128 + Math.round(P.AMP * s) * 40;
+        d[p] = d[p + 1] = d[p + 2] = v < 0 ? 0 : v > 255 ? 255 : v; d[p + 3] = 255;
+      }
     }
-    const im = x.getImageData(0, 0, 900, 620), d = im.data; // 一點雜訊:真實照片不會是數學平滑的
-    for (let i = 0; i < d.length; i += 4) { const n = (Math.random() - .5) * 6; d[i] += n; d[i + 1] += n; d[i + 2] += n; }
     x.putImageData(im, 0, 0);
-    return c;
   }
+  $('btnNewKey').addEventListener('click', () => useSecret(K.newSecret()));
+  $('btnUseSecret').addEventListener('click', () => useSecret($('inSecret').value));
+  $('btnKeyDl').addEventListener('click', () => K.download(secret, logoImg, N, 'iwl-key.png'));
 
   const loadFile = (file) => new Promise((res, rej) => {
-    const im = new Image();
-    im.onload = () => res(im); im.onerror = rej;
-    im.src = URL.createObjectURL(file);
+    const im = new Image(); im.onload = () => res(im); im.onerror = rej; im.src = URL.createObjectURL(file);
   });
-  function wireDrop(dropId, onImage) {
-    const el = $(dropId);
+  function pickImage(onImage) {
     const input = document.createElement('input');
-    input.type = 'file'; input.accept = 'image/*'; input.hidden = true;
-    document.body.appendChild(input);
-    el.addEventListener('click', (e) => { if (e.target.tagName !== 'A') input.click(); });
+    input.type = 'file'; input.accept = 'image/*';
     input.addEventListener('change', async () => { if (input.files[0]) onImage(await loadFile(input.files[0])); });
+    input.click();
+  }
+  $('btnLogo').addEventListener('click', () => pickImage((im) => { logoImg = im; drawKeyCard(); }));
+
+  // ── 步驟 3:作品與蓋章 ──
+  function wireDrop(id, onImage) {
+    const el = $(id);
+    el.addEventListener('click', (e) => { if (e.target.tagName !== 'A') pickImage(onImage); });
     el.addEventListener('dragover', (e) => { e.preventDefault(); el.classList.add('over'); });
     el.addEventListener('dragleave', () => el.classList.remove('over'));
     el.addEventListener('drop', async (e) => {
@@ -52,62 +71,32 @@
       if (f) onImage(await loadFile(f));
     });
   }
-
-  // ── 步驟 1:金鑰 ──
-  function renderKey() {
-    if (!keyImg) return;
-    const r = F.nodesFromImage(keyImg, N);
-    keyNodes = r.nodes;
-    $('keyOut').hidden = false; $('keyStat').hidden = false;
-
-    const co = $('cKeyOrig'); co.width = co.height = 256; F.ctxOf(co).drawImage(keyImg, 0, 0, 256, 256);
-
-    const cg = $('cKeyGray'); cg.width = cg.height = N; // 每格一像素,CSS 放大成馬賽克,一眼看懂「切成 N×N 取平均」
-    const gx = F.ctxOf(cg), gim = gx.createImageData(N, N);
-    for (let k = 0; k < N * N; k++) { const v = r.gray[k]; gim.data[k * 4] = gim.data[k * 4 + 1] = gim.data[k * 4 + 2] = v; gim.data[k * 4 + 3] = 255; }
-    gx.putImageData(gim, 0, 0);
-
-    F.drawFingerprint($('cKeyFp'), keyNodes, N, 16);
-    F.drawField($('cKeyField'), keyNodes, N, 1);
-
-    const s = r.strength;
-    $('mStrength').style.width = Math.min(100, s * 200) + '%';
-    const weak = s < 0.15;
-    $('strengthTxt').innerHTML = weak
-      ? `<b style="color:#a33">指紋強度 ${s.toFixed(3)}：太弱。</b>這張圖縮成 ${N}×${N} 之後幾乎是一片平的（純色、或細節太滿被平均掉了）。換一張對比明顯、有大塊明暗的圖。`
-      : `指紋強度 ${s.toFixed(3)}（RMS）。0.15 以下會不穩，這張夠用。`;
-    $('btnStamp').disabled = !(artImg && !weak);
-    updateVerifyButtons();
+  wireDrop('dropArt', (im) => { artImg = im; $('btnStamp').disabled = !nodes; });
+  $('demoArt').addEventListener('click', (e) => { e.preventDefault(); artImg = demoArt(); $('btnStamp').disabled = !nodes; });
+  function demoArt() {
+    const c = F.mkCanvas(900, 620), x = F.ctxOf(c);
+    const g = x.createLinearGradient(0, 0, 900, 620);
+    g.addColorStop(0, '#2b4a6f'); g.addColorStop(.5, '#7fa6c9'); g.addColorStop(1, '#f0d9b5');
+    x.fillStyle = g; x.fillRect(0, 0, 900, 620);
+    for (let i = 0; i < 26; i++) {
+      x.fillStyle = `hsla(${i * 37 % 360},55%,${45 + i % 30}%,.5)`;
+      x.beginPath(); x.arc(60 + (i * 137) % 820, 70 + (i * 211) % 480, 24 + (i * 13) % 70, 0, 7); x.fill();
+    }
+    const im = x.getImageData(0, 0, 900, 620), d = im.data; // 一點雜訊:真實照片不會是數學平滑的
+    for (let i = 0; i < d.length; i += 4) { const n = (Math.random() - .5) * 6; d[i] += n; d[i + 1] += n; d[i + 2] += n; }
+    x.putImageData(im, 0, 0);
+    return c;
   }
-
-  wireDrop('dropKey', (im) => { keyImg = im; renderKey(); });
-  wireDrop('dropArt', (im) => { artImg = im; $('btnStamp').disabled = !keyNodes; });
-  $('demoKey').addEventListener('click', (e) => { e.preventDefault(); keyImg = demoKeyImage(); renderKey(); });
-  $('demoArt').addEventListener('click', (e) => { e.preventDefault(); artImg = demoArtImage(); $('btnStamp').disabled = !keyNodes; });
-  $('nSel').addEventListener('change', () => {
-    N = Number($('nSel').value);
-    $('thTxt').textContent = P.thresholdFor(N);
-    $('nHint').textContent = N === 8
-      ? '8×8 的假陽性明顯較高（實測拿別人的金鑰驗，中位數 12.2、最高 18.1），所以門檻要拉到 28。這是它比較好偽造，不只是 logo 認不出來。'
-      : '16×16：實測拿別人的金鑰驗，最高 10.2，門檻 16。';
-    stamped = null; $('stampOut').hidden = true; $('verifyOut').hidden = true; $('survTable').hidden = true;
-    $('btnDownload').disabled = true; renderKey(); updateVerifyButtons();
-  });
-  $('nSel').dispatchEvent(new Event('change'));
-
-  // ── 步驟 2:蓋章 ──
   $('btnStamp').addEventListener('click', () => {
-    stamped = F.stamp(artImg, keyNodes, N, 20);
+    stamped = F.stamp(artImg, nodes, N, 20);
     $('stampOut').hidden = false;
-    const scale = Math.min(1, 860 / stamped.W);
+    const scale = Math.min(1, 900 / stamped.W);
     for (const [id, src] of [['cAfter', stamped.after], ['cBefore', stamped.before], ['cDiff', stamped.diff]]) {
       const c = $(id); c.width = Math.round(stamped.W * scale); c.height = Math.round(stamped.H * scale);
       F.ctxOf(c).drawImage(src, 0, 0, c.width, c.height);
     }
-    $('cmpTop').style.width = '50%';
-    $('cBefore').style.width = $('cAfter').width + 'px';
-    $('btnDownload').disabled = false;
-    updateVerifyButtons();
+    $('cmpTop').style.width = '50%'; $('cBefore').style.width = $('cAfter').width + 'px';
+    for (const b of ['btnDownload', 'btnVerify', 'btnForge', 'btnSurvive', 'btnRestore']) $(b).disabled = false;
   });
   $('cmpSlider').addEventListener('input', (e) => { $('cmpTop').style.width = e.target.value + '%'; });
   $('btnDownload').addEventListener('click', () => {
@@ -118,49 +107,83 @@
     }, 'image/png');
   });
 
-  // ── 步驟 3:驗證與偽造 ──
-  function updateVerifyButtons() {
-    const ready = !!(stamped && keyNodes);
-    $('btnVerify').disabled = !ready; $('btnForge').disabled = !ready; $('btnSurvive').disabled = !ready;
+  // ── 步驟 4:驗證、偽造、熱圖 ──
+  function drawMap(canvas, map) {
+    const cell = 14; canvas.width = canvas.height = N * cell;
+    const x = F.ctxOf(canvas);
+    let mx = 0; for (const v of map) mx = Math.max(mx, Math.abs(v));
+    for (let j = 0; j < N; j++) for (let i = 0; i < N; i++) {
+      const t = Math.max(0, map[j * N + i]) / (mx || 1);
+      x.fillStyle = `rgb(${Math.round(247 - t * 236)},${Math.round(250 - t * 128)},${Math.round(248 - t * 179)})`;
+      x.fillRect(i * cell, j * cell, cell, cell);
+    }
   }
-  function showVerdict(r, label) {
+  function show(r, label) {
     $('verifyOut').hidden = false;
-    const th = P.thresholdFor(N);
     $('vVerdict').className = 'verdict ' + (r.found ? 'yes' : 'no');
     $('vVerdict').textContent = (r.found ? '檢出：這張圖蓋過這把金鑰' : '未檢出') + '　（' + label + '）';
-    $('vZ').textContent = 'z = ' + r.z.toFixed(1);
-    $('mZ').style.width = Math.min(100, r.z / (th * 2) * 100) + '%';
-    $('vDetail').textContent = '門檻 ' + th + '。' + (r.scale && r.scale !== 1 ? '尺度搜尋還原倍率 ×' + r.scale.toFixed(2) + '。' : '')
-      + (r.found ? '對上的位移是 ' + (r.shift ? r.shift.join(', ') : '—') + '。' : '有正有負互相抵消，沒有任何位置對得起來。');
+    $('vZ').textContent = r.z.toFixed(1); $('vPsr').textContent = r.psr.toFixed(1);
+    $('zMin').textContent = r.zMin; $('psrMin').textContent = r.psrMin;
+    $('vDetail').textContent = (r.scale && r.scale !== 1 ? '尺度搜尋還原倍率 ×' + r.scale.toFixed(2) + '。' : '')
+      + (r.found ? '對上的位移是 (' + r.shift.join(', ') + ')。' : 'z 或 PSR 其中一項沒過關,沒有任何位置對得起來。');
   }
-  $('btnVerify').addEventListener('click', () => showVerdict(D.detectWithScale(stamped.after, keyNodes, N), '用同一把金鑰'));
-  $('btnForge').addEventListener('click', () => {
-    const other = F.nodesFromImage(demoForgeKey(), N); // 一把不相干的金鑰
-    showVerdict(D.detectWithScale(stamped.after, other, N), '拿別人的金鑰偽造');
+  $('btnVerify').addEventListener('click', () => {
+    const r = D.detectWithScale(stamped.after, nodes, N, null, true);
+    show(r, '用我的金鑰');
+    if (r.map) drawMap($('cMapGood'), r.map);
+    const other = P.nodesFromSecret(K.newSecret(), N);
+    const b = P.detect(D.dataOf(stamped.after), stamped.W, stamped.H, other, N, { wantMap: true });
+    if (b.map) drawMap($('cMapBad'), b.map);
   });
-  function demoForgeKey() {
-    const c = F.mkCanvas(256, 256), x = F.ctxOf(c);
-    x.fillStyle = '#fff'; x.fillRect(0, 0, 256, 256);
-    x.fillStyle = '#000';
-    for (let i = 0; i < 9; i++) x.fillRect((i * 71) % 200, (i * 113) % 190, 50, 62);
-    return c;
-  }
+  $('btnForge').addEventListener('click', () => {
+    const other = P.nodesFromSecret(K.newSecret(), N);
+    const r = D.detectWithScale(stamped.after, other, N, null, true);
+    show(r, '拿別人的金鑰');
+    if (r.map) drawMap($('cMapBad'), r.map);
+  });
 
-  // ── 步驟 4:存活測試 ──
+  // ── 步驟 5:還原 ──
+  $('btnRestore').addEventListener('click', () => {
+    const W = stamped.W, H = stamped.H;
+    const im = F.ctxOf(stamped.after).getImageData(0, 0, W, H);
+    P.unembed(im.data, W, H, nodes, N);
+    const orig = F.ctxOf(stamped.before).getImageData(0, 0, W, H).data;
+    let same = 0, diff = 0, maxd = 0;
+    for (let i = 2; i < orig.length; i += 4) {
+      const d = Math.abs(orig[i] - im.data[i]);
+      if (d === 0) same++; else { diff++; maxd = Math.max(maxd, d); }
+    }
+    const pct = (same / (same + diff) * 100).toFixed(2);
+    $('restoreOut').hidden = false;
+    $('restoreOut').innerHTML = `減回去之後，<b>${pct}%</b> 的像素跟原圖完全相同，最大殘差 ${maxd}/255。`
+      + (maxd <= 1 ? '殘差來自抖動與夾邊的取整，不是演算法有誤。' : '')
+      + ' 沒有金鑰的人算不出這個場，也就減不掉。';
+  });
+
+  // ── 步驟 6:存活測試 ──
   $('btnSurvive').addEventListener('click', async () => {
     const btn = $('btnSurvive'); btn.disabled = true;
     $('survTable').hidden = false; $('survBody').innerHTML = '';
-    await D.survive(stamped.after, keyNodes, N, (row, i, total) => {
+    await D.survive(stamped.after, nodes, N, (row, i, total) => {
       $('survProg').textContent = i + ' / ' + total;
       const tr = document.createElement('tr');
-      const surprise = row.found !== row.expect; // 跟預期不符要標出來,那才是資訊
+      const surprise = row.found !== row.expect; // 跟預期不符才是新資訊
       if (surprise) tr.className = 'surprise';
       tr.innerHTML = `<td>${row.name}</td><td class="hint">${row.size}</td><td class="num">${row.z.toFixed(1)}</td>`
+        + `<td class="num">${(row.psr || 0).toFixed(1)}</td>`
         + `<td class="${row.found ? 'ok' : 'dead'}">${row.found ? '活著' : '死了'}</td>`
         + `<td class="hint">${row.expect ? '應該活' : '應該死'}${surprise ? '（不符）' : ''}</td>`;
       $('survBody').appendChild(tr);
     });
-    $('survProg').textContent = '跑完了。黃底是跟預期不符的,那幾行才是新資訊。';
+    $('survProg').textContent = '跑完了。黃底是跟預期不符的那幾行,那才是新資訊。';
     btn.disabled = false;
   });
+
+  // 鑰圖拖進來就讀出金鑰(中繼資料),讓「丟一張圖進來」自動分辨是鑰圖還是作品
+  document.addEventListener('drop', async (e) => {
+    const f = [...(e.dataTransfer ? e.dataTransfer.files : [])].find((x) => x.type === 'image/png');
+    if (!f) return;
+    const s = K.readITXt(await f.arrayBuffer());
+    if (s && !secret) { e.preventDefault(); useSecret(s); }
+  }, true);
 })();

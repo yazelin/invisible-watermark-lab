@@ -3,20 +3,21 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>隱形浮水印實驗室 — 用你自己的圖當金鑰，蓋在你自己的作品上</title>
-<meta name="description" content="上傳一張圖當金鑰、一張作品蓋上去，肉眼看不出來，然後自己驗出來、自己把它弄壞。整套演算法邊玩邊看懂。">
+<title>隱形浮水印實驗室 — 蓋一個看不見的印，然後自己把它驗出來、自己把它弄壞</title>
+<meta name="description" content="產生一把金鑰，蓋在你的作品上，肉眼看不出差別。然後驗給自己看、試著偽造、把它摧殘一輪。整套演算法邊玩邊看懂，全在你的瀏覽器裡跑。">
 <style>
   :root{
     --ink:#16211c; --muted:#5f7168; --line:#dfe8e2; --bg:#f7faf8; --card:#fff;
     --accent:#0b7a45; --accent-soft:#e6f4ec; --warn:#a8631a; --warn-bg:#fff6e6; --bad:#a33; --bad-bg:#fdeeee;
     --sans:"Noto Sans TC","PingFang TC","Microsoft JhengHei",system-ui,sans-serif;
+    --mono:ui-monospace,SFMono-Regular,Menlo,monospace;
   }
   *{box-sizing:border-box;margin:0;padding:0;}
   body{font-family:var(--sans);background:var(--bg);color:var(--ink);line-height:1.85;}
-  .wrap{max-width:940px;margin:0 auto;padding:3rem 1.2rem 4rem;}
+  .wrap{max-width:980px;margin:0 auto;padding:3rem 1.2rem 4rem;}
   h1{font-size:clamp(1.7rem,4.2vw,2.5rem);line-height:1.3;}
-  h2{font-size:1.3rem;margin:3rem 0 .8rem;padding-top:1.4rem;border-top:1px solid var(--line);}
-  h3{font-size:1.03rem;margin:1.6rem 0 .4rem;}
+  h2{font-size:1.32rem;margin:3rem 0 .8rem;padding-top:1.4rem;border-top:1px solid var(--line);}
+  h3{font-size:1.04rem;margin:1.7rem 0 .4rem;}
   p{margin:.65rem 0;} ul,ol{margin:.65rem 0 .65rem 1.4rem;} li{margin:.3rem 0;}
   a{color:var(--accent);} strong{color:var(--accent);}
   .lede{color:var(--muted);font-size:1.05rem;margin-top:.8rem;}
@@ -24,11 +25,12 @@
     background:var(--accent);color:#fff;border-radius:50%;font-size:.95rem;margin-right:.5rem;}
   .card{background:var(--card);border:1px solid var(--line);border-radius:16px;padding:1.1rem 1.3rem;margin:1rem 0;}
   .warn{background:var(--warn-bg);border-color:#f0dcb8;} .warn b{color:var(--warn);}
+  .danger{background:var(--bad-bg);border-color:#f0c8c8;} .danger b{color:var(--bad);}
   table{border-collapse:collapse;width:100%;font-size:.92rem;margin:.9rem 0;}
   th,td{border:1px solid var(--line);padding:.4rem .7rem;text-align:left;}
   th{background:var(--card);color:var(--accent);}
   td.num{text-align:right;font-variant-numeric:tabular-nums;}
-  code{background:#eef4f0;border-radius:5px;padding:.05rem .35rem;font-size:.92em;}
+  code{background:#eef4f0;border-radius:5px;padding:.05rem .35rem;font-size:.92em;font-family:var(--mono);}
   button{font:inherit;border:1px solid var(--line);background:var(--card);border-radius:999px;
     padding:.45rem 1.1rem;cursor:pointer;color:var(--ink);}
   button:hover:not(:disabled){border-color:var(--accent);color:var(--accent);}
@@ -36,23 +38,27 @@
   button.primary:hover:not(:disabled){background:#096539;color:#fff;}
   button:disabled{opacity:.45;cursor:not-allowed;}
   .row{display:flex;gap:.6rem;flex-wrap:wrap;align-items:center;margin:.8rem 0;}
-  .drop{border:2px dashed var(--line);border-radius:16px;padding:1.4rem;text-align:center;color:var(--muted);
-    cursor:pointer;background:var(--card);transition:border-color .15s;}
+  .drop{border:2px dashed var(--line);border-radius:16px;padding:1.3rem;text-align:center;color:var(--muted);
+    cursor:pointer;background:var(--card);}
   .drop:hover,.drop.over{border-color:var(--accent);color:var(--accent);}
-  .grid{display:grid;gap:1rem;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));margin:1rem 0;}
-  figure{margin:0;} figure canvas,figure img{width:100%;display:block;border:1px solid var(--line);border-radius:10px;background:#fff;image-rendering:pixelated;}
-  figcaption{font-size:.82rem;color:var(--muted);margin-top:.35rem;line-height:1.5;}
-  .meter{height:10px;border-radius:6px;background:#e7ece9;overflow:hidden;margin:.4rem 0;}
-  .meter i{display:block;height:100%;background:var(--accent);width:0;transition:width .3s;}
-  .verdict{font-size:1.1rem;font-weight:700;padding:.7rem 1rem;border-radius:12px;margin:.7rem 0;}
+  .grid{display:grid;gap:1rem;grid-template-columns:repeat(auto-fit,minmax(190px,1fr));margin:1rem 0;}
+  .two{display:grid;gap:1rem;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));margin:1rem 0;}
+  figure{margin:0;} figure canvas,figure img{width:100%;display:block;border:1px solid var(--line);border-radius:10px;background:#fff;}
+  figure.px canvas{image-rendering:pixelated;}
+  figcaption{font-size:.83rem;color:var(--muted);margin-top:.35rem;line-height:1.55;}
+  .verdict{font-size:1.08rem;font-weight:700;padding:.7rem 1rem;border-radius:12px;margin:.7rem 0;}
   .yes{background:var(--accent-soft);color:var(--accent);} .no{background:var(--bad-bg);color:var(--bad);}
-  .zbig{font-size:2.2rem;font-weight:800;line-height:1.1;font-variant-numeric:tabular-nums;}
+  .nums{display:flex;gap:2rem;flex-wrap:wrap;margin:.6rem 0;}
+  .nums div{min-width:110px;} .nums b{display:block;font-size:1.9rem;line-height:1.15;font-variant-numeric:tabular-nums;}
+  .nums span{font-size:.83rem;color:var(--muted);}
   .hint{font-size:.86rem;color:var(--muted);}
   .cmp{position:relative;border:1px solid var(--line);border-radius:12px;overflow:hidden;background:#fff;}
   .cmp canvas{display:block;width:100%;}
   .cmp .top{position:absolute;inset:0;overflow:hidden;}
   .cmp .top canvas{position:absolute;top:0;left:0;height:100%;width:auto;}
   input[type=range]{width:100%;}
+  .secret{font-family:var(--mono);font-size:1.15rem;font-weight:700;letter-spacing:.04em;
+    background:#eef4f0;border-radius:10px;padding:.5rem .8rem;display:inline-block;word-break:break-all;}
   .ok{color:var(--accent);font-weight:700;} .dead{color:var(--bad);font-weight:700;}
   .surprise{background:var(--warn-bg);}
   footer{margin-top:3.5rem;border-top:1px solid var(--line);padding-top:1.4rem;font-size:.9rem;color:var(--muted);}
@@ -64,122 +70,157 @@
 
 <header>
   <h1>隱形浮水印實驗室</h1>
-  <p class="lede">上傳一張圖當<strong>金鑰</strong>，另一張是你要蓋章的<strong>作品</strong>。蓋完肉眼看不出差別，然後你自己把它驗出來、自己把它弄壞。
-  整套演算法沒有黑箱，每一步的中間產物都畫給你看。所有運算都在你的瀏覽器裡，<strong>圖片不會離開你的電腦</strong>。</p>
+  <p class="lede">產生一把金鑰，蓋在你的作品上——肉眼看不出任何差別。然後驗給自己看、<strong>試著用別人的金鑰偽造</strong>、把圖摧殘一輪看它什麼時候會死。
+  每一步的中間產物都畫出來，沒有黑箱。<strong>所有運算都在你的瀏覽器裡，圖片和金鑰都不會離開你的電腦。</strong></p>
 </header>
 
 <h2>先搞清楚你要哪一種浮水印</h2>
-<p>浮水印有兩種完全不同的題目，取捨也完全不同。看完你可能會發現該用別的工具，那也是這頁的目的。</p>
 <table>
   <tr><th>題目</th><th>需求</th><th>代表</th></tr>
   <tr><td><b>洩漏溯源</b></td><td>圖裡要載得動 ID，才知道是誰外流的</td><td>invisible-watermark（dwtDct）、RivaGAN</td></tr>
   <tr><td><b>歸屬證明</b></td><td>只要回答「這是不是我的」，一個位元就夠</td><td><b>本頁</b></td></tr>
 </table>
-<p>因為只需要一個位元，我們可以把全部的工程餘裕拿去換抗破壞性：平鋪、暴力搜尋、只看整體相關性。溯源型要精準到每個位元的位置，所以對裁切、縮放特別脆弱。</p>
+<p>因為只需要一個位元，我們可以把全部的工程餘裕拿去換抗破壞性：平鋪、暴力搜尋、只看整體相關性。溯源型要精準到每個位元的位置，所以對裁切、縮放特別脆弱。看完你可能會發現該用別的工具，那也是這頁的目的。</p>
 
-<h2><span class="step">1</span>把你的圖變成金鑰</h2>
-<div class="drop" id="dropKey">點這裡或拖一張圖進來當金鑰（logo、簽名、隨便一張你的圖都行）<br><span class="hint">沒有現成的？<a href="#" id="demoKey">用內建示範圖</a></span></div>
+<h2><span class="step">1</span>先有一把金鑰</h2>
+<p>金鑰是一段隨機字串，不是圖。它決定浮水印長什麼樣子，<strong>而且只有握有它的人能蓋、能驗</strong>。</p>
 <div class="row">
-  <label>指紋解析度
-    <select id="nSel"><option value="16" selected>16×16（磁磚 256px，預設）</option><option value="8">8×8（磁磚 128px）</option></select>
-  </label>
-  <span class="hint" id="nHint"></span>
+  <button class="primary" id="btnNewKey">產生一把新金鑰</button>
+  <span class="hint">或貼上你已經有的：</span>
+  <input id="inSecret" placeholder="IWL1-XXXXX-XXXXX-XXXXX-XXXXX" style="font-family:var(--mono);padding:.4rem .7rem;border:1px solid var(--line);border-radius:8px;min-width:20rem">
+  <button id="btnUseSecret">使用</button>
 </div>
-<div class="grid" id="keyOut" hidden>
-  <figure><canvas id="cKeyOrig"></canvas><figcaption>① 你的原圖</figcaption></figure>
-  <figure><canvas id="cKeyGray"></canvas><figcaption>② 轉灰階、切成 N×N 塊，每塊取平均亮度</figcaption></figure>
-  <figure><canvas id="cKeyFp"></canvas><figcaption>③ 減平均、正規化 → <b>指紋</b>。藍=正、黃=負，亮度是強度</figcaption></figure>
-  <figure><canvas id="cKeyField"></canvas><figcaption>④ smoothstep 內插成<b>平滑場</b>，這才是真正要蓋上去的東西</figcaption></figure>
+<div id="keyOut" hidden>
+  <p class="secret" id="secretTxt"></p>
+  <div class="two">
+    <figure><canvas id="cKeyCard"></canvas>
+      <figcaption><b>鑰圖</b>。同一把金鑰在圖裡存了三份：QR、明文、還有 PNG 的中繼資料。原檔、截圖、手機拍螢幕、甚至印出來，任何一種都還原得回來。</figcaption></figure>
+    <div>
+      <div class="row"><button class="primary" id="btnKeyDl">下載鑰圖</button>
+        <button id="btnLogo">加上我的 logo 當標籤</button></div>
+      <div class="card danger">
+        <p><b>這張圖就是鑰匙本身。</b>任何看到它的人，都能在別人的作品上蓋出你的浮水印，宣稱那是你做的。</p>
+        <p>警告是烙在像素裡的，不是寫在這個頁面上——說明沒人會看，但圖會跟著圖跑。哪天你不小心把它貼出去，你自己和看到的人都會先讀到那句話。</p>
+      </div>
+      <p class="hint">logo 只是標籤，讓你在一資料夾長得一樣的 QR 裡分得出哪張是哪張。<b>它對演算法沒有任何貢獻</b>，這點下面會解釋。</p>
+    </div>
+  </div>
 </div>
-<div id="keyStat" hidden>
-  <div class="meter"><i id="mStrength"></i></div>
-  <p class="hint" id="strengthTxt"></p>
+
+<h2><span class="step">2</span>金鑰長成什麼樣的「場」</h2>
+<p>把金鑰餵給一個確定性的亂數產生器，得到 16×16 個 <code>+1</code> 或 <code>−1</code>。這就是你的指紋。同一把金鑰永遠得到同一張，換一個字元就完全不同。</p>
+<div class="grid" id="fieldOut" hidden>
+  <figure class="px"><canvas id="cFp"></canvas><figcaption>① <b>指紋</b>：16×16 個 ±1。藍=+1、黃=−1</figcaption></figure>
+  <figure><canvas id="cField"></canvas><figcaption>② <b>平滑場</b>：每 16 像素一個節點，中間用 smoothstep 內插。硬邊會在平坦底色上看到條紋，這是我們做壞的第一版</figcaption></figure>
+  <figure><canvas id="cTile"></canvas><figcaption>③ <b>鋪滿</b>：整張圖用同一塊圖樣平鋪。所以任何一塊夠大的碎片都含有完整圖樣——這是能抗裁切的根本原因</figcaption></figure>
+  <figure><canvas id="cAmp"></canvas><figcaption>④ <b>真正的振幅</b>：實際只在藍色通道加減 2/255。這張是把它放大 40 倍才看得到的樣子</figcaption></figure>
 </div>
 <div class="card">
-  <p><b>為什麼要減平均？</b>場的總和不為零，整張圖會偏藍，肉眼就看得出來。而且偵測端第一件事就是高通，直流成分本來就會被吃掉，留著只有壞處。</p>
-  <p><b>為什麼要內插成平滑場？</b>直接用硬邊的格子，平坦底色上會看到規律的 banding。這是我們做壞的第一個版本，被使用者實測抓到。</p>
-  <p><b>誠實講：你的 logo 會被壓成低解析度指紋，不是把 logo 藏在圖裡。</b>放大也還原不出形狀，這是刻意的——要看不見就不能有細節。</p>
+  <p><b>為什麼是隨機的 ±1，而不是你的 logo？</b>這頁的第一版真的是讓人上傳 logo 當金鑰，後來量出兩個補不掉的問題：</p>
+  <ul>
+    <li><b>公開的東西不能當金鑰。</b>logo 通常是公開的，任何人拿得到就能蓋出你的浮水印。</li>
+    <li><b>自然圖片是低頻的。</b>驗證端第一步就是高通（下面會解釋），logo 縮成指紋之後相鄰的格子高度相關，高通把它殺掉大半——訊號長在偵測器看不見的地方。實測正向分數只有隨機圖樣的一半，裁一半就驗不出來了。</li>
+  </ul>
+  <p>隨機 ±1 沒有這兩個問題：相鄰獨立（天生是「白」的）、每一格都用滿振幅。這也是 1997 年那篇奠基論文用偽隨機載波的原因。</p>
 </div>
 
-<h2><span class="step">2</span>蓋到你的作品上</h2>
-<div class="drop" id="dropArt">點這裡或拖一張作品進來<br><span class="hint">沒有現成的？<a href="#" id="demoArt">用內建示範圖</a></span></div>
+<h2><span class="step">3</span>蓋到作品上</h2>
+<div class="drop" id="dropArt">點這裡或拖一張作品進來<span class="hint"><br>沒有現成的？<a href="#" id="demoArt">用內建示範圖</a></span></div>
 <div class="row"><button class="primary" id="btnStamp" disabled>蓋上去</button><button id="btnDownload" disabled>下載蓋好的 PNG</button></div>
 <div id="stampOut" hidden>
-  <div class="cmp" id="cmpBox">
-    <canvas id="cAfter"></canvas>
-    <div class="top" id="cmpTop"><canvas id="cBefore"></canvas></div>
-  </div>
+  <div class="cmp" id="cmpBox"><canvas id="cAfter"></canvas><div class="top" id="cmpTop"><canvas id="cBefore"></canvas></div></div>
   <input type="range" id="cmpSlider" min="0" max="100" value="50">
-  <p class="hint">拖曳滑桿：左邊是原圖，右邊是蓋好的。這就是重點——你應該看不出差別。</p>
-  <figure style="margin-top:1rem"><canvas id="cDiff"></canvas>
-    <figcaption>把兩張圖的差值放大 <b>20 倍</b>。看不見不代表不存在：你的指紋鋪滿了整張圖。</figcaption></figure>
+  <p class="hint">拖曳滑桿：左邊原圖、右邊蓋好的。重點就是你應該看不出差別。</p>
+  <figure><canvas id="cDiff"></canvas><figcaption>把兩張的差值放大 <b>20 倍</b>。看不見不代表不存在——你的指紋鋪滿了整張圖。</figcaption></figure>
 </div>
 <div class="card">
   <p><b>只動藍色通道，每個像素最多 ±2/255。</b>人眼對藍色的空間解析度最低，同樣的振幅藏在藍色最不容易被看到。</p>
-  <p><b>近白、近黑的地方振幅減半。</b>那些地方最容易露餡，白底上的 −2 平滑斑實測看得見。</p>
-  <p><b>加 4×4 有序抖動再取整。</b>直接四捨五入會在平坦底色留下軟邊的等高線，這是我們做壞的第三個版本。</p>
+  <p><b>近白、近黑的地方振幅減半</b>，那裡最容易露餡。<b>加 4×4 有序抖動再取整</b>，直接四捨五入會在平坦底色留下軟邊的等高線——這是做壞的第三版。</p>
 </div>
 
-<h2><span class="step">3</span>驗給自己看，然後試著偽造</h2>
+<h2><span class="step">4</span>驗給自己看，然後試著偽造</h2>
 <div class="row">
-  <button class="primary" id="btnVerify" disabled>用同一把金鑰驗證</button>
-  <button id="btnForge" disabled>拿一把「別人的」金鑰去驗</button>
+  <button class="primary" id="btnVerify" disabled>用我的金鑰驗證</button>
+  <button id="btnForge" disabled>拿別人的金鑰驗（偽造測試）</button>
 </div>
 <div id="verifyOut" hidden>
   <div class="verdict" id="vVerdict"></div>
-  <p class="zbig" id="vZ"></p>
-  <div class="meter"><i id="mZ"></i></div>
+  <div class="nums">
+    <div><b id="vZ"></b><span>z：峰值有多強<br>要 &gt; <span id="zMin"></span></span></div>
+    <div><b id="vPsr"></b><span>PSR：峰值比旁瓣突出多少<br>要 &gt; <span id="psrMin"></span></span></div>
+  </div>
   <p class="hint" id="vDetail"></p>
+  <div class="two">
+    <figure class="px"><canvas id="cMapGood"></canvas><figcaption><b>用對的金鑰</b>：把指紋在 256 個可能的位移上各試一次，畫成熱圖。<b>只有一格會亮</b>——那就是對齊的位置。</figcaption></figure>
+    <figure class="px"><canvas id="cMapBad"></canvas><figcaption><b>用別人的金鑰</b>：整片都是雜訊，沒有任何一格特別突出。這就是 PSR 在量的東西。</figcaption></figure>
+  </div>
 </div>
 <div class="card">
-  <p><b>怎麼驗的？</b>把圖切成 16×16 的格子，每格算 <code>藍 −(紅+綠)/2</code> 的平均（甩掉亮度），再減四鄰的平均（甩掉畫面內容，內容是低頻、指紋是格間交替的高頻），
-  然後跟你的指紋<b>逐格相乘再全部加起來</b>。對得上，每一項都是正的，會一路累積；對不上，有正有負互相抵消，趨近零。</p>
-  <p><b>不是相減看是不是零。</b>相減要成立得假設圖上只有指紋沒有別的東西；真實的圖有內容也有壓縮雜訊，相減永遠不會是零。乘法決定這一格算不算數，加法讓雜訊互相抵消。</p>
-  <p><b>門檻怎麼定的？</b>裁切會讓指紋整個移位，所以我們把它在所有可能的位置各試一次，取最高分。試越多次，光靠運氣的最高分就越高。
-  這頁的門檻是實測出來的，不是拍腦袋：拿 60 組不相干的金鑰去驗一張已經蓋章的圖，最高分 10.2，所以門檻設 <b id="thTxt">16</b>。</p>
+  <p><b>怎麼驗的？</b>把圖切成 16×16 的格子，每格算 <code>藍 −(紅+綠)/2</code> 的平均（甩掉亮度），再減去四個鄰居的平均（甩掉畫面內容：內容是低頻的，指紋是格子間交替的高頻），
+  然後跟指紋<b>逐格相乘再全部加起來</b>。對得上，每一項都是正的、一路累積；對不上，有正有負互相抵消，趨近零。</p>
+  <p><b>不是相減看是不是零。</b>相減要成立得假設圖上只有指紋、沒有別的東西；真實的圖有內容也有壓縮雜訊，相減永遠不會是零。乘法決定這一格算不算數，加法讓雜訊互相抵消。</p>
+  <p><b>為什麼要兩個數字？</b>因為兩種假陽性的破口不一樣，而且剛好相反：</p>
+  <ul>
+    <li><b>乾淨的圖</b>（根本沒蓋過）：峰值絕對值極低，但它的分數分布很窄，所以 PSR 反而會衝高。</li>
+    <li><b>別人的金鑰</b>：z 可以很高，因為 z 會跟著嵌入強度一起放大——你蓋得越用力，別人隨便一把金鑰撞出來的最高分也越高。但那個峰值並不突出。</li>
+  </ul>
+  <p>只看其中一個，都會被另一種騙過去。兩個都要求，就都擋掉了。這是實測逼出來的：一開始只用 z、門檻照舊版設 7，第一次跑負控制就抓到假陽性。</p>
 </div>
 
-<h2><span class="step">4</span>自己把它弄壞</h2>
-<p>蓋好之後，讓網頁把圖摧殘一輪再各驗一次。<b>這張表同時證明「它真的活得下來」和「它有明確的極限」</b>，比任何文案都可信。</p>
+<h2><span class="step">5</span>還原：證明它是可逆的</h2>
+<p>有金鑰的話，可以把場<b>減回去</b>。這是理解整件事最快的一條路——浮水印就是一個加上去的訊號，不是什麼玄學。</p>
+<div class="row"><button class="primary" id="btnRestore" disabled>把浮水印減回去</button></div>
+<p class="hint" id="restoreOut" hidden></p>
+<div class="card warn">
+  <p><b>為什麼一個「移除浮水印」的功能會放在這裡？</b>因為它證明了兩件我們必須誠實說的事：這個標記是可逆的加法訊號；而且<b>沒有金鑰就精確減不掉</b>——別人只能用模糊、旋轉那種粗暴手段，那本來就擋不住。</p>
+  <p>這頁從頭到尾的立場是：開源、可拔除、防的是順手盜用而不是防偽。與其假裝拔不掉，不如把怎麼拔、以及拔了會怎樣，一次講完。</p>
+</div>
+
+<h2><span class="step">6</span>自己把它弄壞</h2>
+<p>把蓋好的圖摧殘一輪再各驗一次。<b>這張表同時證明「它真的活得下來」和「它有明確的極限」</b>，比任何文案都可信。</p>
+<p class="hint">「預期」是設計階段在另一張圖上量到的參考值，<b>不是保證</b>。存活與否很吃圖片本身：平滑的圖雜訊底低、分數高；雜訊多的圖分數會掉一截。跟預期不符的那幾行會標成黃底，那才是新資訊。</p>
 <div class="row"><button class="primary" id="btnSurvive" disabled>跑存活測試</button><span class="hint" id="survProg"></span></div>
 <table id="survTable" hidden>
-  <thead><tr><th>摧殘方式</th><th>尺寸</th><th class="num">z 分數</th><th>結果</th><th>預期</th></tr></thead>
+  <thead><tr><th>摧殘方式</th><th>尺寸</th><th class="num">z</th><th class="num">PSR</th><th>結果</th><th>預期</th></tr></thead>
   <tbody id="survBody"></tbody>
 </table>
 
 <h2>誠實的界限</h2>
 <div class="card warn">
-  <p><b>開源，所以拔得掉。</b>防的是順手盜用，不是防偽。原始碼就在下面那個連結裡，任何人都能算出一模一樣的場。</p>
-  <p><b>金鑰是圖，不是密碼。</b>如果你的 logo 是公開的，別人也能拿它算出同一把金鑰、蓋到別的作品上，宣稱那是你做的。要擋這個，得把座標雜湊換成帶密鑰的，而且每件作品用不同的鹽——那是另一個等級的題目。</p>
-  <p><b>而且同一把金鑰蓋很多張圖會被反推。</b>指紋是固定的、內容是不相干的，蒐集幾張取平均，內容互相抵消，指紋會浮出來。這叫平均攻擊。</p>
+  <p><b>開源，所以拔得掉。</b>防的是順手盜用，不是防偽。原始碼就在下面的連結裡。</p>
+  <p><b>金鑰外流就全毀。</b>拿到你金鑰的人可以在任何圖上蓋出你的浮水印，宣稱那是你做的。這是這套機制唯一的信任根。</p>
+  <p><b>金鑰弄丟就證明不了。</b>我們沒有伺服器、沒有備份、沒有「忘記密碼」。所以鑰圖裡存了三份。</p>
+  <p><b>同一把金鑰蓋很多張圖，理論上可以被反推。</b>指紋固定、內容不相干，蒐集夠多張取平均，內容互相抵消、指紋會浮出來（平均攻擊）。真的在意就一件作品一把金鑰。</p>
   <p><b>旋轉會殺死它。</b>我們沒有搜尋角度，這是明確的已知限制。</p>
-  <p><b>剩下的區域太小就驗不出來。</b>極限由剩餘格數決定，不是由破壞程度決定。大約留下 200×200 像素以上才穩。</p>
+  <p><b>剩下的區域太小就驗不出來。</b>極限由剩餘格數決定，不是破壞程度。大約留 200×200 像素以上才穩。</p>
   <p><b>未檢出不等於沒被盜。</b>只代表這張圖不是、或已經無法辨識為用這把金鑰蓋的。</p>
 </div>
 
 <h2>站在誰的肩膀上</h2>
 <p>技術不新。這是 <b>spread spectrum watermarking</b>（擴頻浮水印），奠基論文是 Cox、Kilian、Leighton、Shamoon 1997 年發表於 IEEE Transactions on Image Processing 的
 <i>Secure Spread Spectrum Watermarking for Multimedia</i>。核心想法一樣：把振幅很低的偽隨機圖樣鋪滿整張圖，偵測時用相關性比對。他們埋在 DCT 係數，我們埋在空間域的藍色通道。</p>
-<p>其他每一塊也都是既有技術：相關偵測與 t 統計量是訊號偵測理論的教科書內容；利用人眼對藍色空間解析度低是感知模型浮水印的常見手法；平鋪加暴力搜尋做同步是對抗裁切的標準做法；有序抖動是印刷業的老技術。</p>
+<p>其他每一塊也都是既有技術：相關偵測與 t 統計量是訊號偵測理論的教科書內容；峰值突出度（peak-to-sidelobe）是雷達與相關濾波器的標準判準；利用人眼對藍色空間解析度低是感知模型浮水印的常見手法；平鋪加暴力搜尋做同步是對抗裁切的標準做法；有序抖動是印刷業的老技術。</p>
 <table>
   <tr><th>專案</th><th>做法</th><th>跟這裡的差別</th></tr>
   <tr><td><a href="https://github.com/ShieldMnt/invisible-watermark">invisible-watermark</a></td><td>Python，dwtDct／dwtDctSvd／RivaGAN</td><td>載得動 ID，可溯源；抗裁切與縮放較弱</td></tr>
   <tr><td><a href="https://github.com/hvuhsg/hiddenmark">hiddenmark</a></td><td>瀏覽器端，傅立葉頻域環狀調變</td><td>方向最接近，頻域天生較抗縮放旋轉，實作複雜</td></tr>
   <tr><td><a href="https://github.com/zhensherlock/watermark-js-plus">watermark-js-plus</a></td><td>瀏覽器端，可見＋盲浮水印</td><td>功能最全，目標是保護網頁與文件</td></tr>
 </table>
-<p>這裡自己的只有工程取捨與實測：±2 的振幅、16 像素節點、近白減半、抖動、四次做壞的淘汰過程，以及上面那張存活表。承認站在別人肩膀上，反而讓那些實測數據更可信。</p>
+<p>這裡自己的只有工程取捨與實測：±2 的振幅、16 像素節點、近白減半、抖動、雙門檻判定，以及那些做壞的版本被淘汰的過程。承認站在別人肩膀上，反而讓實測數據更可信。</p>
 
 <footer>
   <p><a href="https://github.com/yazelin/invisible-watermark-lab">原始碼與實測數據（GitHub）</a>
      <a href="https://www.facebook.com/yazelin">Facebook</a>
      <a href="https://buymeacoffee.com/yazelin">請我喝咖啡</a></p>
-  <p>MIT 授權 · 林亞澤 · 所有運算都在你的瀏覽器裡，圖片不會離開你的電腦</p>
+  <p>MIT 授權 · 林亞澤 · 所有運算都在你的瀏覽器裡，圖片與金鑰都不會離開你的電腦</p>
 </footer>
 </div>
 
+<script src="vendor/qrcode-generator.js"></script>
 <script src="pure.js"></script>
 <script src="field.js"></script>
 <script src="detect.js"></script>
+<script src="keyimage.js"></script>
 <script src="app.js"></script>
 </body>
 </html>

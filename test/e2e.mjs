@@ -62,39 +62,47 @@ try {
   console.log('頁面載入');
   ok('三個引擎檔都掛上了', await run('!!(window.IWL && window.IWL_FIELD && window.IWL_DETECT)'));
 
-  console.log('\n步驟 1-2:示範金鑰 + 示範作品 → 蓋章');
+  console.log('\n步驟 1-3:產生金鑰 → 示範作品 → 蓋章');
   const stamp = await run(`(() => {
-    document.getElementById('demoKey').click();
+    document.getElementById('btnNewKey').click();
     document.getElementById('demoArt').click();
     document.getElementById('btnStamp').click();
-    const s = window.__s = null;
     return { keyShown: !document.getElementById('keyOut').hidden,
+             fieldShown: !document.getElementById('fieldOut').hidden,
              stampShown: !document.getElementById('stampOut').hidden,
-             strength: document.getElementById('strengthTxt').textContent };
+             secret: document.getElementById('secretTxt').textContent };
   })()`);
-  ok('金鑰的四張中間產物有畫出來', stamp.keyShown);
+  ok('金鑰產生了,格式正確', /^IWL1(-[0-9A-HJKMNP-TV-Z]{5}){4}$/.test(stamp.secret), stamp.secret);
+  ok('鑰圖畫出來了', stamp.keyShown);
+  ok('指紋/場/鋪滿/振幅四張都畫了', stamp.fieldShown);
   ok('蓋章結果有顯示', stamp.stampShown);
-  ok('指紋強度有算出來', /強度 0\.\d+/.test(stamp.strength), stamp.strength.slice(0, 28));
 
-  console.log('\n步驟 3:驗證(正向)');
-  const v = await run(`(() => {
-    const N = 16, F = window.IWL_FIELD, D = window.IWL_DETECT;
-    const c = document.getElementById('cAfter');
-    return { z: 0 };
-  })()`);
+  console.log('\n步驟 4:驗證(正向)');
   const pos = await run(`(() => {
     document.getElementById('btnVerify').click();
-    return { txt: document.getElementById('vVerdict').textContent, z: parseFloat(document.getElementById('vZ').textContent.replace(/[^0-9.]/g,'')) };
+    return { txt: document.getElementById('vVerdict').textContent,
+             z: parseFloat(document.getElementById('vZ').textContent),
+             psr: parseFloat(document.getElementById('vPsr').textContent) };
   })()`);
-  ok('用同一把金鑰 → 檢出', /^檢出/.test(pos.txt), 'z=' + pos.z);
+  ok('用同一把金鑰 → 檢出', /^檢出/.test(pos.txt), 'z=' + pos.z + ' psr=' + pos.psr);
 
-  console.log('\n步驟 3:偽造(負控制,這條最重要)');
+  console.log('\n步驟 4:偽造(負控制,這條最重要)');
   const neg = await run(`(() => {
     document.getElementById('btnForge').click();
-    return { txt: document.getElementById('vVerdict').textContent, z: parseFloat(document.getElementById('vZ').textContent.replace(/[^0-9.]/g,'')) };
+    return { txt: document.getElementById('vVerdict').textContent,
+             z: parseFloat(document.getElementById('vZ').textContent),
+             psr: parseFloat(document.getElementById('vPsr').textContent) };
   })()`);
-  ok('拿別人的金鑰 → 未檢出', /^未檢出/.test(neg.txt), 'z=' + neg.z);
-  ok('偽造分數明顯低於真的', neg.z < pos.z / 2, neg.z + ' vs ' + pos.z);
+  ok('拿別人的金鑰 → 未檢出', /^未檢出/.test(neg.txt), 'z=' + neg.z + ' psr=' + neg.psr);
+  ok('偽造的 PSR 明顯低於真的(這才是判準)', neg.psr < pos.psr / 2, neg.psr + ' vs ' + pos.psr);
+
+  console.log('\n步驟 5:還原(證明可逆)');
+  const res = await run(`(() => {
+    document.getElementById('btnRestore').click();
+    return document.getElementById('restoreOut').textContent;
+  })()`);
+  const pct = parseFloat((res.match(/([\d.]+)%/) || [])[1] || '0');
+  ok('減回去之後幾乎逐像素還原', pct > 99, pct + '% 相同');
 
   console.log('\n步驟 4:存活矩陣(真的 JPEG / 裁切 / 縮放 / 旋轉)');
   const rows = await run(`(async () => {
@@ -106,15 +114,16 @@ try {
     return [...document.querySelectorAll('#survBody tr')].map((tr) => {
       const td = tr.querySelectorAll('td');
       return { name: td[0].textContent, size: td[1].textContent, z: parseFloat(td[2].textContent),
-               found: td[3].textContent === '活著', expect: td[4].textContent.startsWith('應該活') };
+               psr: parseFloat(td[3].textContent),
+               found: td[4].textContent === '活著', expect: td[5].textContent.startsWith('應該活') };
     });
   })()`);
-  console.log('    ' + '摧殘方式'.padEnd(34) + '尺寸'.padEnd(12) + 'z'.padStart(7) + '  結果   預期');
+  console.log('    ' + '摧殘方式'.padEnd(34) + '尺寸'.padEnd(12) + 'z'.padStart(7) + 'PSR'.padStart(7) + '  結果   預期');
   let surprises = 0;
   for (const r of rows) {
     const s = r.found !== r.expect;
     if (s) surprises++;
-    console.log('    ' + r.name.padEnd(32) + r.size.padEnd(12) + r.z.toFixed(1).padStart(7) + '  ' +
+    console.log('    ' + r.name.padEnd(32) + r.size.padEnd(12) + r.z.toFixed(1).padStart(7) + r.psr.toFixed(1).padStart(7) + '  ' +
       (r.found ? '活著' : '死了') + '   ' + (r.expect ? '應該活' : '應該死') + (s ? '  ← 不符' : ''));
   }
   ok('存活矩陣跑完 13 項', rows.length === 13);

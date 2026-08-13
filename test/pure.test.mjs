@@ -90,9 +90,39 @@ ok('半透明像素跳過(premultiply 會失真,驗證端算不回來)', () => {
   for (let i = 0; i < 400; i++) assert.equal(a[i * 4 + 2], b[i * 4 + 2], '半透明像素被動到 @' + i);
 });
 
+console.log('unembed — 還原');
+ok('減回去之後 99% 以上逐像素相同,殘差最多 1', () => {
+  const W = 320, H = 240, a = makeImage(W, H), b = a.slice();
+  const nd = P.nodesFromSecret('IWL1-ABCDE-FGHJK-MNPQR-STVWX', 16);
+  P.embed(b, W, H, nd, 16); P.unembed(b, W, H, nd, 16);
+  let same = 0, tot = 0, mx = 0;
+  for (let i = 2; i < a.length; i += 4) { tot++; const d = Math.abs(a[i] - b[i]); if (d === 0) same++; else mx = Math.max(mx, d); }
+  console.log('      逐像素相同 ' + (same / tot * 100).toFixed(2) + '%,最大殘差 ' + mx);
+  assert.ok(same / tot > 0.99, '只還原了 ' + (same / tot * 100).toFixed(1) + '%');
+  assert.ok(mx <= 1, '殘差 ' + mx);
+});
+
+console.log('金鑰');
+ok('secret 格式檢查擋得住亂打的', () => {
+  assert.ok(P.isSecret('IWL1-ABCDE-FGHJK-MNPQR-STVWX'));
+  assert.ok(!P.isSecret('IWL1-ABCDE-FGHJK-MNPQR'));
+  assert.ok(!P.isSecret('IWL1-ABCDE-FGHJK-MNPQR-STVWI')); // I 不在字母表(會跟 1 搞混)
+});
+ok('同一把金鑰永遠得到同一張指紋', () => {
+  const a = P.nodesFromSecret('IWL1-ABCDE-FGHJK-MNPQR-STVWX', 16);
+  const b = P.nodesFromSecret('IWL1-ABCDE-FGHJK-MNPQR-STVWX', 16);
+  assert.deepEqual([...a], [...b]);
+});
+ok('指紋是 ±1、零均值、RMS 剛好 1(振幅預算用滿)', () => {
+  const n = P.nodesFromSecret('IWL1-ABCDE-FGHJK-MNPQR-STVWX', 16);
+  assert.ok([...n].every((v) => v === 1 || v === -1));
+  assert.equal([...n].reduce((a, b) => a + b, 0), 0);
+  assert.equal(Math.sqrt([...n].reduce((a, b) => a + b * b, 0) / n.length), 1);
+});
+
 console.log('detect — 正向');
 const N = 16, W = 640, H = 480;
-const mine = logoNodes(N, 11);
+const mine = P.nodesFromSecret('IWL1-QQQQQ-WWWWW-EEEEE-RRRRR', N);
 ok('蓋了自己的 logo,用自己的 logo 驗 → 檢出', () => {
   const d = makeImage(W, H);
   P.embed(d, W, H, mine, N);
@@ -111,18 +141,31 @@ ok('乾淨的圖 → 未檢出', () => {
 ok('蓋了 A 的 logo,拿 B 的 logo 去驗 → 未檢出(不能互相冒認)', () => {
   const d = makeImage(W, H);
   P.embed(d, W, H, mine, N);
-  const other = logoNodes(N, 22);
+  const other = P.nodesFromSecret('IWL1-ZZZZZ-XXXXX-CCCCC-VVVVV', N);
   const r = P.detect(d, W, H, other, N);
-  console.log('      z =', r.z.toFixed(1));
-  assert.ok(!r.found, '別人的 logo 也驗得出來,z=' + r.z);
+  console.log('      z =', r.z.toFixed(1), ' psr =', r.psr.toFixed(1));
+  assert.ok(!r.found, '別人的金鑰也驗得出來,z=' + r.z + ' psr=' + r.psr);
 });
-ok('八組不相干的 logo 都驗不出來(誤判率不是只看一次)', () => {
+ok('十二組不相干的金鑰都驗不出來(誤判率不是只看一次)', () => {
   const d = makeImage(W, H);
   P.embed(d, W, H, mine, N);
-  let worst = 0;
-  for (let s = 100; s < 108; s++) worst = Math.max(worst, P.detect(d, W, H, logoNodes(N, s), N).z);
-  console.log('      八組裡最高 z =', worst.toFixed(1));
-  assert.ok(worst < P.thresholdFor(N), '有一組誤判,最高 z=' + worst);
+  let wz = 0, wp = 0, bad = 0;
+  for (let s = 0; s < 12; s++) {
+    const r = P.detect(d, W, H, P.nodesFromSecret('IWL1-TEST' + s + '-00000-00000-00000', N), N);
+    wz = Math.max(wz, r.z); wp = Math.max(wp, r.psr); if (r.found) bad++;
+  }
+  console.log('      最高 z =', wz.toFixed(1), ' 最高 psr =', wp.toFixed(1));
+  assert.equal(bad, 0, '有 ' + bad + ' 組誤判');
+});
+ok('乾淨圖配十二把金鑰也都驗不出來', () => {
+  const d = makeImage(W, H, 4242);
+  let bad = 0, wp = 0;
+  for (let s = 0; s < 12; s++) {
+    const r = P.detect(d, W, H, P.nodesFromSecret('IWL1-CLEAN' + s + '-0000-00000-0000', N), N);
+    wp = Math.max(wp, r.psr); if (r.found) bad++;
+  }
+  console.log('      最高 psr =', wp.toFixed(1), '(乾淨圖的 PSR 可以很高,擋它的是 z)');
+  assert.equal(bad, 0, '有 ' + bad + ' 組誤判');
 });
 
 console.log('\n' + pass + '/' + pass + ' 通過');

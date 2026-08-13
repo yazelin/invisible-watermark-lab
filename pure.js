@@ -18,8 +18,13 @@
      真正的假陽性來源不是乾淨圖(那個接近 0),是「別人的 logo 撞到你的場」——
      搜尋會在 65536 個候選裡挑出最像的那個位移,兩個隨機零均值場總有一個對得比較準。
      line-chat-maker 的門檻 7 是 8x8、固定 ±1 圖樣時代量的,直接沿用會誤判。 */
-  const THRESHOLDS = { 8: 28, 16: 16 };
-  const thresholdFor = (N) => THRESHOLDS[N] || 16;
+  /* 判定要同時過兩關,因為兩種假陽性的破口不一樣(實測見 test/calibrate.mjs):
+       乾淨圖          —— 峰值絕對值極低(z ≤ 1.4),但因為分布很窄,PSR 可以衝到 10.7
+       別人的金鑰      —— z 可以到 13.6(它會跟著嵌入強度放大),但峰值不突出(PSR ≤ 4.8)
+     只看其中一個都會被另一種騙過去,兩個都要求就都擋掉了。 */
+  const Z_MIN = 6;     // 絕對強度:擋乾淨圖
+  const PSR_MIN = 6.5; // 峰值突出度:擋別人的金鑰
+  const thresholdFor = () => PSR_MIN;
 
   const clamp01 = (t) => (t < 0 ? 0 : t > 1 ? 1 : t);
   const ss = (t) => t * t * (3 - 2 * t); // smoothstep:消掉硬邊,否則平坦底色會 banding
@@ -79,6 +84,63 @@
 
   const nodeAt = (nodes, N, i, j) => nodes[(((j % N) + N) % N) * N + (((i % N) + N) % N)];
 
+  /* ── v2:金鑰是一段 secret,不是 logo ──────────────────────────────
+     v1 讓使用者上傳 logo 當金鑰,兩個問題都是定義上的、補不掉的:
+       偽造 —— logo 通常是公開的,公開的東西不能當金鑰
+       強度 —— 自然圖片是低頻的,偵測端第一步就高通,能量被殺掉大半
+     v2 改成 secret → 雜湊 → 偽隨機 ±1 圖樣。偽隨機圖樣相鄰獨立(天生是白的)、
+     每格滿振幅(RMS 正好 1),兩個問題一起消失。logo 降級成鑰圖上的標籤。
+     v1 的程式碼(nodesFromGray/whiten)保留,頁面拿它當教材:第一版為什麼不夠。 */
+
+  // xmur3:字串 → 32 bit 種子。要跨平台位元級一致,所以不用任何內建雜湊
+  function seedFrom(str) {
+    let h = 1779033703 ^ str.length;
+    for (let i = 0; i < str.length; i++) {
+      h = Math.imul(h ^ str.charCodeAt(i), 3432918353);
+      h = (h << 13) | (h >>> 19);
+    }
+    return () => {
+      h = Math.imul(h ^ (h >>> 16), 2246822507);
+      h = Math.imul(h ^ (h >>> 13), 3266489909);
+      return (h ^= h >>> 16) >>> 0;
+    };
+  }
+  // sfc32:小、快、夠亂。這裡不需要密碼學等級的 PRNG,secret 本身才是祕密
+  function rngFrom(secret) {
+    const s = seedFrom(secret);
+    let a = s(), b = s(), c = s(), d = s();
+    return () => {
+      a >>>= 0; b >>>= 0; c >>>= 0; d >>>= 0;
+      let t = (a + b) | 0;
+      a = b ^ (b >>> 9); b = (c + (c << 3)) | 0; c = (c << 21) | (c >>> 11);
+      d = (d + 1) | 0; t = (t + d) | 0; c = (c + t) | 0;
+      return (t >>> 0) / 4294967296;
+    };
+  }
+  /* secret → N×N 的 ±1 節點。強制零均值(節點數是偶數,把多的那一邊翻過來),
+     否則整張圖會偏藍;偽隨機本來就接近零均值,這步只是把它釘死。 */
+  function nodesFromSecret(secret, N) {
+    const rnd = rngFrom(String(secret));
+    const n = new Float64Array(N * N);
+    for (let k = 0; k < n.length; k++) n[k] = rnd() < 0.5 ? -1 : 1;
+    let sum = 0;
+    for (let k = 0; k < n.length; k++) sum += n[k];
+    for (let k = 0; sum !== 0 && k < n.length; k++) { // 把多數側的格子逐一翻面直到打平
+      if ((sum > 0 && n[k] === 1) || (sum < 0 && n[k] === -1)) { n[k] = -n[k]; sum += n[k] * 2; }
+    }
+    return n;
+  }
+
+  /* 產生新的 secret。Crockford base32(去掉 I L O U,不會抄錯),100 bit。
+     bytes 由呼叫端給(瀏覽器 crypto.getRandomValues / node crypto),pure.js 不碰環境。 */
+  const B32 = '0123456789ABCDEFGHJKMNPQRSTVWXYZ';
+  function secretFromBytes(bytes) {
+    let s = '';
+    for (let i = 0; i < 20; i++) s += B32[bytes[i % bytes.length] % 32];
+    return 'IWL1-' + s.slice(0, 5) + '-' + s.slice(5, 10) + '-' + s.slice(10, 15) + '-' + s.slice(15, 20);
+  }
+  const isSecret = (s) => /^IWL1(-[0-9A-HJKMNP-TV-Z]{5}){4}$/.test(String(s || '').trim().toUpperCase());
+
   /* 嵌入:把場加到藍通道。data 是 RGBA(Uint8ClampedArray),就地修改。 */
   function embed(data, W, H, nodes, N) {
     const BAYER = [0, 8, 2, 10, 12, 4, 14, 6, 3, 11, 1, 9, 15, 7, 13, 5]; // 直接取整會留量化等高線,抖散成高頻微噪;區塊均值不變
@@ -106,6 +168,39 @@
     return data;
   }
 
+  /* 還原:把場減回去。不能「蓋一個相反的場」—— embed 裡有 Math.floor 與
+     「近白近黑振幅減半」,後者還取決於當下的藍值,所以反過來蓋不會抵消
+     (實測只有 64.7% 的像素回得去)。正確做法是反解:嵌入後的值只可能來自
+     b0 ± 2 的範圍,逐一試哪個 b0 蓋出來剛好等於現在這個值。 */
+  function unembed(data, W, H, nodes, N) {
+    const BAYER = [0, 8, 2, 10, 12, 4, 14, 6, 3, 11, 1, 9, 15, 7, 13, 5];
+    const nCols = (W >> 4) + 2;
+    const rowA = new Float64Array(nCols), rowB = new Float64Array(nCols);
+    let cachedGy = -1;
+    for (let y = 0; y < H; y++) {
+      const gy = y >> 4;
+      if (gy !== cachedGy) {
+        for (let g = 0; g < nCols; g++) { rowA[g] = nodeAt(nodes, N, g, gy); rowB[g] = nodeAt(nodes, N, g, gy + 1); }
+        cachedGy = gy;
+      }
+      const fy = ss(((y & 15) + 0.5) / NODE_PX);
+      for (let x = 0; x < W; x++) {
+        const p = (y * W + x) * 4;
+        if (data[p + 3] < 250) continue;
+        const gx = x >> 4, fx = ss(((x & 15) + 0.5) / NODE_PX);
+        const sv = (rowA[gx] * (1 - fx) + rowA[gx + 1] * fx) * (1 - fy) + (rowB[gx] * (1 - fx) + rowB[gx + 1] * fx) * fy;
+        const bayer = (BAYER[(y & 3) * 4 + (x & 3)] + 0.5) / 16;
+        const cur = data[p + 2];
+        for (let b0 = Math.max(0, cur - 3); b0 <= Math.min(255, cur + 3); b0++) {
+          const a = (b0 >= 253 || b0 <= 2) ? AMP / 2 : AMP;
+          const v = b0 + Math.floor(a * sv + bayer);
+          if ((v < 0 ? 0 : v > 255 ? 255 : v) === cur) { data[p + 2] = b0; break; }
+        }
+      }
+    }
+    return data;
+  }
+
   /* 模板:一個 16x16 區塊的平均場值 = 四角節點的平均(smoothstep 對稱,積分正好是角點平均)。
      再做跟偵測端一樣的高通(減四鄰),兩邊要對得起來。 */
   function template(nodes, N) {
@@ -123,7 +218,9 @@
 
   /* 偵測:積分圖 → 每個(相位, 平移)候選跟模板做匹配濾波 → t 統計量 → 取極值當 z。
      回 { found, z, phase, shift }。 */
-  function detect(data, W, H, nodes, N) {
+  function detect(data, W, H, nodes, N, opts) {
+    const wantMap = !!(opts && opts.wantMap); // 要不要順便回傳「每個位移的分數」熱圖(教學用)
+    let mapBest = -Infinity, map = null;
     const { Ehp } = template(nodes, N);
     const S = W + 1;
     const lumI = new Float64Array(S * (H + 1)); // B−(R+G)/2:場只藏在藍通道,這個差值把亮度甩掉
@@ -200,13 +297,32 @@
           s += acc[u] * e; e2 += accN[u] * e * e;
           sF += accF[u] * e; e2F += accFN[u] * e * e;
         }
-        if (e2 > 0) { const t = s / (sdHp * Math.sqrt(e2)); stats.push(t); if (t > best.z) best = { z: t, phase: [px, py], shift: [sx, sy] }; }
+        if (e2 > 0) {
+          const t = s / (sdHp * Math.sqrt(e2)); stats.push(t);
+          if (t > best.z) best = { z: t, phase: [px, py], shift: [sx, sy] };
+          if (wantMap) { if (!map) map = new Float64Array(N * N); if (px === 0 && py === 0) map[sy * N + sx] = t; }
+        }
         if (useFlat && e2F > 0) { const t = sF / (sdF * Math.sqrt(e2F)); stats.push(t); if (t > best.z) best = { z: t, phase: [px, py], shift: [sx, sy] }; }
       }
     }
-    if (!stats.length) return { found: false, z: 0, phase: null, shift: null };
-    return { found: best.z > thresholdFor(N), z: best.z, threshold: thresholdFor(N), phase: best.phase, shift: best.shift };
+    if (!stats.length) return { found: false, z: 0, psr: 0, phase: null, shift: null };
+
+    /* 峰值突出度(peak-to-sidelobe)。
+       為什麼不能只看 t 的最大值:t 會跟著嵌入強度一起放大 —— 嵌得越強,拿「別人的金鑰」
+       撞出來的最高分也越高(實測 v2:正向 43.7,別人的 secret 最高 13.1,而裁到 30% 的
+       真陽性只剩 11.1 → 假陽性比真陽性還高,兩邊重疊)。
+       改看「峰值比它自己的旁瓣高多少」:對的金鑰只有一個候選會衝高、其餘全趴著;
+       錯的金鑰全部都是旁瓣,最高的那個並不突出。這個比值跟嵌入強度無關,所以不重疊。
+       扣掉前 1% 再算旁瓣統計,避免峰值自己和它鄰近的相位污染基準。 */
+    const sorted = Float64Array.from(stats).sort();
+    const med = sorted[sorted.length >> 1];
+    const dev = Float64Array.from(sorted, (v) => Math.abs(v - med)).sort();
+    // MAD×1.4826 ≈ 常態下的 σ,但對離群值與混合分布免疫 —— 這裡的池子混了兩種
+    // 統計量(一般格與平坦格),平坦格那組的 σ 有下限保護,用均值/標準差會被拉歪
+    const sd = Math.max(1e-9, dev[dev.length >> 1] * 1.4826);
+    const psr = (best.z - med) / sd;
+    return { found: best.z > Z_MIN && psr > PSR_MIN, z: best.z, psr, zMin: Z_MIN, psrMin: PSR_MIN, phase: best.phase, shift: best.shift, map };
   }
 
-  root.IWL = { NODE_PX, AMP, THRESHOLDS, thresholdFor, nodesFromGray, whiten, nodeStrength, nodeAt, embed, template, detect };
+  root.IWL = { NODE_PX, AMP, Z_MIN, PSR_MIN, thresholdFor, unembed, nodesFromSecret, secretFromBytes, isSecret, rngFrom, nodesFromGray, whiten, nodeStrength, nodeAt, embed, template, detect };
 })(typeof window !== 'undefined' ? window : globalThis);

@@ -15,9 +15,9 @@
 
   /* 縮放會破壞 16px 格線對齊,平移搜尋補不了,但訊號還在(平滑場是低頻,重新取樣殺不掉)。
      把「還原倍率」也納入搜尋:粗掃一遍,再在最高分附近細掃。只在直接偵測失敗時啟動。 */
-  function detectWithScale(src, nodes, N, onProgress) {
+  function detectWithScale(src, nodes, N, onProgress, wantMap) {
     const c = canvasOf(src);
-    const direct = P.detect(dataOf(c), c.width, c.height, nodes, N);
+    const direct = P.detect(dataOf(c), c.width, c.height, nodes, N, { wantMap: !!wantMap });
     if (direct.found) return { ...direct, scale: 1 };
     const at = (f) => {
       const w = Math.round(c.width * f), h = Math.round(c.height * f);
@@ -25,7 +25,7 @@
       const t = F.mkCanvas(w, h), x = F.ctxOf(t);
       x.imageSmoothingEnabled = true; x.imageSmoothingQuality = 'high';
       x.drawImage(c, 0, 0, w, h);
-      return P.detect(x.getImageData(0, 0, w, h).data, w, h, nodes, N);
+      return P.detect(x.getImageData(0, 0, w, h).data, w, h, nodes, N, { wantMap: !!wantMap });
     };
     let best = { ...direct, scale: 1 };
     for (let f = 1.1; f <= 2.6; f += 0.1) {
@@ -93,7 +93,7 @@
     for (const a of ATTACKS) {
       const c = await a.run(base);
       const r = detectWithScale(c, nodes, N);
-      const row = { name: a.name, expect: a.expect, z: r.z, found: r.found, scale: r.scale, size: c.width + '×' + c.height };
+      const row = { name: a.name, expect: a.expect, z: r.z, psr: r.psr, found: r.found, scale: r.scale, size: c.width + '×' + c.height };
       out.push(row);
       if (onStep) onStep(row, out.length, ATTACKS.length);
     }
