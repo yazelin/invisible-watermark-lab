@@ -16,6 +16,7 @@
     $('secretTxt').textContent = secret;
     drawKeyCard(); drawField();
     $('btnStamp').disabled = !artImg;
+    if (artImg) $('stampHint').textContent = '← 接下來按這顆';
   }
   const drawKeyCard = () => {
     const card = K.render(secret, logoImg, N), c = $('cKeyCard');
@@ -71,8 +72,26 @@
       if (f) onImage(await loadFile(f));
     });
   }
-  wireDrop('dropArt', (im) => { artImg = im; $('btnStamp').disabled = !nodes; });
-  $('demoArt').addEventListener('click', (e) => { e.preventDefault(); artImg = demoArt(); $('btnStamp').disabled = !nodes; });
+  /* 選好圖一定要有回饋:縮圖 + 尺寸 + 明講下一步該按什麼。
+     原本只是把按鈕變成可按,使用者按完示範圖不知道發生了什麼,也不知道要往下按。 */
+  function setArt(im, name) {
+    artImg = im;
+    const W = im.naturalWidth || im.width, H = im.naturalHeight || im.height;
+    const c = $('cPick'), sc = 96 / W;
+    c.width = 96; c.height = Math.round(H * sc);
+    F.ctxOf(c).drawImage(im, 0, 0, c.width, c.height);
+    $('picked').hidden = false;
+    $('pickName').textContent = name;
+    $('pickSize').textContent = W + ' × ' + H + ' 像素';
+    $('dropTxt').textContent = '換一張作品';
+    $('dropArt').classList.add('ready');
+    const b = $('btnStamp');
+    b.disabled = !nodes;
+    $('stampHint').textContent = nodes ? '← 接下來按這顆' : '還缺一把金鑰,先回到步驟 1 產生一把';
+    if (!b.disabled) { b.classList.remove('nextcue'); void b.offsetWidth; b.classList.add('nextcue'); }
+  }
+  wireDrop('dropArt', (im) => setArt(im, '你選的作品'));
+  $('demoArt').addEventListener('click', (e) => { e.preventDefault(); setArt(demoArt(), '內建示範圖'); });
   function demoArt() {
     const c = F.mkCanvas(900, 620), x = F.ctxOf(c);
     const g = x.createLinearGradient(0, 0, 900, 620);
@@ -97,6 +116,8 @@
     }
     setSplit(50);
     for (const b of ['btnDownload', 'btnVerify', 'btnForge', 'btnSurvive', 'btnRestore']) $(b).disabled = false;
+    $('stampHint').textContent = '蓋好了。拉下面的滑桿比對,然後往下捲到步驟 4 驗證。';
+    const v = $('btnVerify'); v.classList.remove('nextcue'); void v.offsetWidth; v.classList.add('nextcue');
   });
   const setSplit = (v) => { $('cBefore').style.clipPath = 'inset(0 ' + (100 - v) + '% 0 0)'; };
   $('cmpSlider').addEventListener('input', (e) => setSplit(e.target.value));

@@ -41,6 +41,14 @@
   .drop{border:2px dashed var(--line);border-radius:16px;padding:1.3rem;text-align:center;color:var(--muted);
     cursor:pointer;background:var(--card);}
   .drop:hover,.drop.over{border-color:var(--accent);color:var(--accent);}
+  .drop.ready{border-style:solid;border-color:var(--accent);background:var(--accent-soft);color:var(--accent);}
+  /* 選好圖要看得到自己選了什麼,不然按下去沒回饋、不知道下一步 */
+  .picked{display:flex;gap:.9rem;align-items:center;background:var(--card);border:1px solid var(--line);
+    border-radius:14px;padding:.7rem .9rem;margin:.7rem 0;}
+  .picked canvas{width:96px;height:auto;border-radius:8px;border:1px solid var(--line);display:block;}
+  .picked b{display:block;color:var(--accent);}
+  .nextcue{animation:cue 1.4s ease-in-out 3;}
+  @keyframes cue{0%,100%{box-shadow:0 0 0 0 rgba(11,122,69,0)}50%{box-shadow:0 0 0 6px rgba(11,122,69,.18)}}
   .grid{display:grid;gap:1rem;grid-template-columns:repeat(auto-fit,minmax(190px,1fr));margin:1rem 0;}
   .two{display:grid;gap:1rem;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));margin:1rem 0;}
   figure{margin:0;} figure canvas,figure img{width:100%;display:block;border:1px solid var(--line);border-radius:10px;background:#fff;}
@@ -127,8 +135,10 @@
 </div>
 
 <h2><span class="step">3</span>蓋到作品上</h2>
-<div class="drop" id="dropArt">點這裡或拖一張作品進來<span class="hint"><br>沒有現成的？<a href="#" id="demoArt">用內建示範圖</a></span></div>
-<div class="row"><button class="primary" id="btnStamp" disabled>蓋上去</button><button id="btnDownload" disabled>下載蓋好的 PNG</button></div>
+<div class="drop" id="dropArt"><span id="dropTxt">點這裡或拖一張作品進來</span><span class="hint"><br>沒有現成的？<a href="#" id="demoArt">用內建示範圖</a></span></div>
+<div class="picked" id="picked" hidden><canvas id="cPick"></canvas><div><b id="pickName"></b><span class="hint" id="pickSize"></span></div></div>
+<div class="row"><button class="primary" id="btnStamp" disabled>蓋上去</button><button id="btnDownload" disabled>下載蓋好的 PNG</button>
+  <span class="hint" id="stampHint"></span></div>
 <div id="stampOut" hidden>
   <div class="cmp" id="cmpBox"><canvas id="cAfter"></canvas><div class="top" id="cmpTop"><canvas id="cBefore"></canvas></div></div>
   <input type="range" id="cmpSlider" min="0" max="100" value="50">
