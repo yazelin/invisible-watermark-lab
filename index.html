@@ -187,6 +187,16 @@
       <figcaption><b>別人的金鑰</b>：整片都是雜訊，沒有任何一格突出。<b>兩張用同一個色階畫</b>，所以這裡的「最亮」其實很暗——這就是 PSR 在量的東西。</figcaption></figure>
   </div>
 </div>
+<div id="scanWrap" hidden>
+  <h3>逐格對答案：把指紋滑過 256 個位置</h3>
+  <p>驗證做的事就是這個。指紋每滑一格算一次分數，<b>灰色帶子是「沒對上」的分數落在哪個範圍</b>（旁瓣）。
+  你的金鑰會有一根衝出帶外，別人的金鑰整排都埋在帶子裡。</p>
+  <div class="row"><button class="primary" id="btnScan">播放</button>
+    <span class="hint" id="scanTxt"></span></div>
+  <figure><canvas id="cScan"></canvas>
+    <figcaption><b>PSR 量的就是這個落差</b>：最高那一根，比帶子高出幾倍。它跟「那根有多高」無關——
+    你蓋得越用力，所有的分數都會一起變高，帶子也會一起變寬，落差才是不會被強度騙的東西。</figcaption></figure>
+</div>
 <div class="card">
   <p><b>怎麼驗的？</b>把圖切成 16×16 的格子，每格算 <code>藍 −(紅+綠)/2</code> 的平均（甩掉亮度），再減去四個鄰居的平均（甩掉畫面內容：內容是低頻的，指紋是格子間交替的高頻），
   然後跟指紋<b>逐格相乘再全部加起來</b>。對得上，每一項都是正的、一路累積；對不上，有正有負互相抵消，趨近零。</p>
@@ -201,7 +211,13 @@
 
 <h2><span class="step">5</span>還原：證明它是可逆的</h2>
 <p>有金鑰的話，可以把場<b>減回去</b>。這是理解整件事最快的一條路——浮水印就是一個加上去的訊號，不是什麼玄學。</p>
+<p>用的是跟步驟 3 同一種「差異放大 20 倍」的看法。蓋好的那張看得到指紋鋪滿；<b>還原後那張應該什麼都沒有</b>。</p>
 <div class="row"><button class="primary" id="btnRestore" disabled>把浮水印減回去</button></div>
+<div class="grid" id="restoreGrid" hidden>
+  <figure><canvas id="cRd0"></canvas><figcaption><b>蓋好的 − 原圖</b><br><span class="hint" id="rd0"></span></figcaption></figure>
+  <figure><canvas id="cRd1"></canvas><figcaption><b>用你的金鑰還原 − 原圖</b><br><span class="hint" id="rd1"></span></figcaption></figure>
+  <figure><canvas id="cRd2"></canvas><figcaption><b>用別人的金鑰硬減 − 原圖</b><br><span class="hint" id="rd2"></span></figcaption></figure>
+</div>
 <p class="hint" id="restoreOut" hidden></p>
 <div class="card warn">
   <p><b>為什麼一個「移除浮水印」的功能會放在這裡？</b>因為它證明了兩件我們必須誠實說的事：這個標記是可逆的加法訊號；而且<b>沒有金鑰就精確減不掉</b>——別人只能用模糊、旋轉那種粗暴手段，那本來就擋不住。</p>

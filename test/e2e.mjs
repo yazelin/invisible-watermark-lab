@@ -114,7 +114,8 @@ try {
       if (!document.getElementById('btnSurvive').disabled) { clearInterval(t); r(); } }, 200); });
     return [...document.querySelectorAll('#survBody tr')].map((tr) => {
       const td = tr.querySelectorAll('td');
-      return { name: td[1].textContent.split('\n')[0].trim(), size: (td[1].querySelector('span') || {}).textContent || '',
+      return { name: (td[1].firstChild ? td[1].firstChild.textContent : td[1].textContent).trim(),
+               size: (td[1].querySelector('span') || {}).textContent || '',
                z: parseFloat(td[2].textContent),
                psr: parseFloat(td[3].textContent),
                found: td[4].textContent === '活著', expect: td[5].textContent.startsWith('應該活') };

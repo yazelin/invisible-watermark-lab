@@ -167,24 +167,123 @@
     if (mine.map) drawMap($('cMapGood'), mine.map, top);
     if (bad.map) drawMap($('cMapBad'), bad.map, top); // 同一個色階
     b.disabled = false; b.textContent = '驗證';
+    lastScan = { mine: mine.map, bad: bad.map, shift: mine.shift, found: mine.found };
+    $('scanWrap').hidden = !(mine.map && bad.map);
+    drawScan(1); // 先畫完整的靜態圖,按播放才逐格跑
+  });
+
+  /* 逐格對答案的動畫。熱圖是「結果」,這個是「過程」—— 使用者看不到「對齊」發生,
+     就感覺不到 PSR 在量什麼。灰帶=沒對上的分數範圍(中位數±MAD),PSR 就是最高那根
+     比帶子高多少。 */
+  let lastScan = null, scanTimer = null;
+  const band = (arr) => {
+    const a = [...arr].sort((x, y) => x - y), med = a[a.length >> 1];
+    const d = a.map((v) => Math.abs(v - med)).sort((x, y) => x - y);
+    return { med, mad: Math.max(1e-6, d[d.length >> 1] * 1.4826) };
+  };
+  function drawScan(progress) {
+    if (!lastScan) return;
+    /* 上下兩排、各自算自己的旁瓣帶,不要疊在同一張圖上。
+       疊在一起時「你的金鑰」整排看起來都比較高,會讀成「到處都比較準」——
+       那不是重點,而且會誤導。重點是:你的那排有一根衝出自己的帶子,別人的那排沒有。 */
+    const c = $('cScan'), W = 900, PH = 132, H = PH * 2 + 26;
+    c.width = W; c.height = H;
+    const x = F.ctxOf(c);
+    x.fillStyle = '#fff'; x.fillRect(0, 0, W, H);
+    const top = Math.max(...lastScan.mine, ...lastScan.bad, 1) * 1.08;
+    const n = lastScan.mine.length, bw = W / n, upto = Math.floor(n * progress);
+
+    const panel = (arr, oy, color, label) => {
+      const y0 = oy + PH - 18, hh = PH - 30;
+      const bd = band(arr.filter((v, i) => v < top * 0.55)); // 帶子只用非峰值算,不然峰值自己會撐大帶寬
+      const py = (v) => y0 - Math.max(0, v) / top * hh;
+      x.fillStyle = '#eef1ef';
+      const bt = py(bd.med + 3 * bd.mad), bb = py(Math.max(0, bd.med - 3 * bd.mad));
+      x.fillRect(0, bt, W, Math.max(2, bb - bt));
+      for (let i = 0; i < upto; i++) {
+        const out = arr[i] > bd.med + 3 * bd.mad;
+        x.fillStyle = out ? color : color === '#0b7a45' ? '#9ecdb5' : '#c3ccc7';
+        x.fillRect(i * bw, py(arr[i]), Math.max(1, bw - 1), y0 - py(arr[i]));
+      }
+      x.strokeStyle = '#16211c'; x.beginPath(); x.moveTo(0, y0); x.lineTo(W, y0); x.stroke();
+      x.fillStyle = color; x.font = '700 13px "Noto Sans TC",sans-serif';
+      x.fillText(label, 8, oy + 14);
+      x.fillStyle = '#9aa8a0'; x.font = '12px "Noto Sans TC",sans-serif';
+      x.fillText('灰帶＝沒對上的分數範圍', 8, bt - 5);
+    };
+    panel(lastScan.mine, 0, '#0b7a45', '你的金鑰');
+    panel(lastScan.bad, PH, '#8a9790', '別人的金鑰');
+    x.fillStyle = '#5f7168'; x.font = '12px "Noto Sans TC",sans-serif';
+    x.fillText('256 個可能的位移（由左至右逐格滑過去）', 8, H - 6);
+  }
+
+  $('btnScan').addEventListener('click', () => {
+    if (!lastScan) return;
+    clearInterval(scanTimer);
+    const n = lastScan.mine.length; let i = 0;
+    $('btnScan').textContent = '重播';
+    scanTimer = setInterval(() => {
+      i += 4;
+      drawScan(i / n);
+      const k = Math.min(n - 1, i);
+      $('scanTxt').textContent = '位移 (' + (k % 16) + ', ' + Math.floor(k / 16) + ')　你的金鑰 '
+        + lastScan.mine[k].toFixed(1) + '　別人的 ' + lastScan.bad[k].toFixed(1);
+      if (i >= n) {
+        clearInterval(scanTimer);
+        const mx = Math.max(...lastScan.mine), bd2 = band(lastScan.bad);
+        $('scanTxt').textContent = '掃完了。你的金鑰最高 ' + mx.toFixed(1)
+          + '，而帶子的中心在 ' + bd2.med.toFixed(1) + '　→　高出 ' + ((mx - bd2.med) / bd2.mad).toFixed(1) + ' 倍帶寬，這就是 PSR。';
+      }
+    }, 24);
   });
 
   // ── 步驟 5:還原 ──
-  $('btnRestore').addEventListener('click', () => {
-    const W = stamped.W, H = stamped.H;
-    const im = F.ctxOf(stamped.after).getImageData(0, 0, W, H);
-    P.unembed(im.data, W, H, nodes, N);
-    const orig = F.ctxOf(stamped.before).getImageData(0, 0, W, H).data;
-    let same = 0, diff = 0, maxd = 0;
-    for (let i = 2; i < orig.length; i += 4) {
-      const d = Math.abs(orig[i] - im.data[i]);
-      if (d === 0) same++; else { diff++; maxd = Math.max(maxd, d); }
+  /* 只給一行「99% 相同」等於沒教。用跟步驟 3 同一種差異放大來看:
+     蓋好的看得到指紋鋪滿、還原後一片空白、用別人的金鑰硬減則變得更亂 —— 三張並排,
+     再各自拿回去重驗一次,可逆與「沒金鑰減不掉」兩件事都變成看得到的東西。 */
+  function diffCanvas(id, aData, bData, W, H) {
+    const c = $(id), sc = Math.min(1, 300 / W);
+    const full = F.mkCanvas(W, H), im = F.ctxOf(full).createImageData(W, H), d = im.data;
+    for (let i = 0; i < aData.length; i += 4) {
+      const v = 128 + (bData[i + 2] - aData[i + 2]) * 20;
+      d[i] = d[i + 1] = d[i + 2] = v < 0 ? 0 : v > 255 ? 255 : v; d[i + 3] = 255;
     }
-    const pct = (same / (same + diff) * 100).toFixed(2);
+    F.ctxOf(full).putImageData(im, 0, 0);
+    c.width = Math.round(W * sc); c.height = Math.round(H * sc);
+    F.ctxOf(c).drawImage(full, 0, 0, c.width, c.height);
+  }
+  $('btnRestore').addEventListener('click', async () => {
+    const btn = $('btnRestore'); btn.disabled = true; btn.textContent = '計算中…';
+    const W = stamped.W, H = stamped.H;
+    const orig = F.ctxOf(stamped.before).getImageData(0, 0, W, H).data;
+    const stampedData = F.ctxOf(stamped.after).getImageData(0, 0, W, H).data;
+
+    const mine = new Uint8ClampedArray(stampedData);
+    P.unembed(mine, W, H, nodes, N);
+    const wrongKey = P.nodesFromSecret(K.newSecret(), N);
+    const wrong = new Uint8ClampedArray(stampedData);
+    P.unembed(wrong, W, H, wrongKey, N);
+
+    $('restoreGrid').hidden = false;
+    diffCanvas('cRd0', orig, stampedData, W, H);
+    diffCanvas('cRd1', orig, mine, W, H);
+    diffCanvas('cRd2', orig, wrong, W, H);
+
+    // 各自拿回去用「你的金鑰」重驗:還原後應該驗不出來,別人硬減過的應該還在
+    const zOf = (data) => { const r = P.detect(data, W, H, nodes, N); return r; };
+    const r0 = zOf(stampedData), r1 = zOf(mine), r2 = zOf(wrong);
+    const fmt = (r) => (r.found ? '檢出' : '未檢出') + '　z ' + r.z.toFixed(1) + '　PSR ' + r.psr.toFixed(1);
+    $('rd0').textContent = '重驗：' + fmt(r0);
+    $('rd1').textContent = '重驗：' + fmt(r1);
+    $('rd2').textContent = '重驗：' + fmt(r2);
+
+    let same = 0, tot = 0, mx = 0;
+    for (let i = 2; i < orig.length; i += 4) { tot++; const d = Math.abs(orig[i] - mine[i]); if (d === 0) same++; else mx = Math.max(mx, d); }
     $('restoreOut').hidden = false;
-    $('restoreOut').innerHTML = `減回去之後，<b>${pct}%</b> 的像素跟原圖完全相同，最大殘差 ${maxd}/255。`
-      + (maxd <= 1 ? '殘差來自抖動與夾邊的取整，不是演算法有誤。' : '')
-      + ' 沒有金鑰的人算不出這個場，也就減不掉。';
+    $('restoreOut').innerHTML = '用你的金鑰減回去之後，<b>' + (same / tot * 100).toFixed(2) + '%</b> 的像素跟原圖完全相同，最大殘差 '
+      + mx + '/255' + (mx <= 1 ? '（殘差來自抖動與 0/255 的夾邊，不是演算法有誤）' : '') + '。'
+      + '中間那張差異圖是空的，代表指紋真的被拿掉了；右邊那張用別人的金鑰硬減，反而多蓋了一層，你的浮水印還在。';
+    btn.disabled = false; btn.textContent = '把浮水印減回去';
   });
 
   // ── 步驟 6:存活測試 ──
