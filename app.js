@@ -95,10 +95,11 @@
       const c = $(id); c.width = Math.round(stamped.W * scale); c.height = Math.round(stamped.H * scale);
       F.ctxOf(c).drawImage(src, 0, 0, c.width, c.height);
     }
-    $('cmpTop').style.width = '50%'; $('cBefore').style.width = $('cAfter').width + 'px';
+    setSplit(50);
     for (const b of ['btnDownload', 'btnVerify', 'btnForge', 'btnSurvive', 'btnRestore']) $(b).disabled = false;
   });
-  $('cmpSlider').addEventListener('input', (e) => { $('cmpTop').style.width = e.target.value + '%'; });
+  const setSplit = (v) => { $('cBefore').style.clipPath = 'inset(0 ' + (100 - v) + '% 0 0)'; };
+  $('cmpSlider').addEventListener('input', (e) => setSplit(e.target.value));
   $('btnDownload').addEventListener('click', () => {
     stamped.after.toBlob((b) => {
       const a = document.createElement('a');

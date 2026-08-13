@@ -54,8 +54,10 @@
   .hint{font-size:.86rem;color:var(--muted);}
   .cmp{position:relative;border:1px solid var(--line);border-radius:12px;overflow:hidden;background:#fff;}
   .cmp canvas{display:block;width:100%;}
-  .cmp .top{position:absolute;inset:0;overflow:hidden;}
-  .cmp .top canvas{position:absolute;top:0;left:0;height:100%;width:auto;}
+  /* 上層用 clip-path 裁,不要用改寬度的方式 —— 改寬度會讓兩張的縮放比例不同,
+     拉到兩端就看得出位移。clip-path 不動版面,兩張永遠疊在同一個位置。 */
+  .cmp .top{position:absolute;inset:0;}
+  .cmp .top canvas{position:absolute;top:0;left:0;width:100%;}
   input[type=range]{width:100%;}
   .secret{font-family:var(--mono);font-size:1.15rem;font-weight:700;letter-spacing:.04em;
     background:#eef4f0;border-radius:10px;padding:.5rem .8rem;display:inline-block;word-break:break-all;}
