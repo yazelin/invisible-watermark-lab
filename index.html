@@ -30,6 +30,7 @@
   th,td{border:1px solid var(--line);padding:.4rem .7rem;text-align:left;}
   th{background:var(--card);color:var(--accent);}
   td.num{text-align:right;font-variant-numeric:tabular-nums;}
+td.num.bad{color:#c0392b;}
   code{background:#eef4f0;border-radius:5px;padding:.05rem .35rem;font-size:.92em;font-family:var(--mono);}
   button{font:inherit;border:1px solid var(--line);background:var(--card);border-radius:999px;
     padding:.45rem 1.1rem;cursor:pointer;color:var(--ink);}
@@ -80,6 +81,9 @@
   footer{margin-top:3.5rem;border-top:1px solid var(--line);padding-top:1.4rem;font-size:.9rem;color:var(--muted);}
   footer a{margin-right:1.2rem;display:inline-block;}
   footer .promo{margin-bottom:.4rem;}
+.v1box{border:1px solid var(--line);border-radius:12px;padding:1rem 1.2rem;margin:1.5rem 0;background:#0000000a}
+.v1box>summary{cursor:pointer;font-weight:700}
+.v1box[open]>summary{margin-bottom:.8rem}
 </style>
 </head>
 <body>
@@ -209,6 +213,33 @@
   <p>只看其中一個，都會被另一種騙過去。兩個都要求，就都擋掉了。這是實測逼出來的：一開始只用 z、門檻照舊版設 7，第一次跑負控制就抓到假陽性。</p>
 </div>
 
+<details class="v1box" id="v1box">
+<summary>附錄：第一版是拿 logo 當金鑰的。為什麼放棄——可以自己動手驗</summary>
+<p>這頁的第一版沒有金鑰字串，是<b>上傳你的 logo，把它壓成 16×16 的指紋</b>。聽起來很美：你的浮水印就是你的標誌。當時列了兩個放棄的理由，後來重量一遍，發現<b>其中一個是我講錯的</b>。兩個都放在這裡。</p>
+<p><b>理由一，定義上的，無解。</b>logo 是你到處在用的東西——網站上、名片上、每張作品的角落。<b>公開的東西不能當金鑰</b>。任何人下載你的 logo，就能在別人的作品上蓋出你的浮水印，宣稱那是你做的。這一條改演算法救不回來。</p>
+<p><b>理由二，我原本以為也是致命的，量完發現不是。</b>偵測端第一件事就是高通（減掉四個鄰居的平均），因為畫面內容是低頻的、指紋是格子間交替的高頻。而 logo 也是低頻的——大色塊、平滑漸層，相鄰的格子長得差不多，高通一過能量掉一大半。<b>但這件事有解：白化</b>（把指紋每格振幅重新正規化到偵測端看得見的頻段）。下面這張表就是白化前後的差距。</p>
+<div class="row">
+  <button id="btnV1Demo">用內建示範 logo</button>
+  <span class="hint">或拖你自己的 logo 進來，看它掉多少：</span>
+</div>
+<div class="drop" id="dropV1"><span id="v1Txt">點這裡或拖一張 logo 進來</span></div>
+<div class="grid" id="v1Fp" hidden>
+  <figure><canvas id="cV1Src"></canvas><figcaption><b>拿來當金鑰的 logo</b></figcaption></figure>
+  <figure class="px"><canvas id="cV1Raw"></canvas><figcaption><b>白化前</b>的指紋<br><span class="hint" id="v1RawStr"></span></figcaption></figure>
+  <figure class="px"><canvas id="cV1Fp"></canvas><figcaption><b>白化後</b>的指紋<br><span class="hint" id="v1Str"></span></figcaption></figure>
+  <figure class="px"><canvas id="cV2Fp"></canvas><figcaption><b>金鑰字串</b>的指紋<br><span class="hint" id="v2Str"></span></figcaption></figure>
+</div>
+<p class="hint" id="v1FpNote" hidden>指紋強度是每格振幅的均方根。<b>白化前那張看得出成塊、相鄰格子同號</b>——那就是低頻，會被高通殺掉的部分。白化把它拉開，金鑰字串那張則是天生格子間隨機跳。</p>
+<div class="row"><button class="primary" id="btnV1Run" disabled>三把指紋各蓋一次同一張圖，各驗兩遍</button><span class="hint" id="v1Prog"></span></div>
+<table id="v1Table" hidden>
+  <thead><tr><th>指紋來源</th><th class="num">強度</th><th class="num">原圖 z</th><th class="num">原圖 PSR</th><th class="num">裁 75% z</th><th class="num">裁 75% PSR</th></tr></thead>
+  <tbody id="v1Body"></tbody>
+</table>
+<p class="hint" id="v1Note" hidden></p>
+<p><b>所以第二個理由被推翻了，logo 當金鑰在效能上其實堪用。</b>它還是被放棄，因為第一個理由本身就足夠——一個公開的東西不管訊號多強，都不是金鑰。</p>
+<p>把這段留在頁面上不是為了嘲笑第一版，是因為<b>「為什麼不行」比「怎麼做」難學</b>，而且<b>連「為什麼不行」都會講錯</b>。這個 repo 一共做壞四次——8×8 太好偽造、直接四捨五入在平坦底色留下等高線、還原用「蓋相反的場」只回得去 64.7%、以及這一次把可解的問題當成致命的。每一次都是量出來才知道的，包括這一次的更正。</p>
+</details>
+
 <h2><span class="step">5</span>還原：證明它是可逆的</h2>
 <p>有金鑰的話，可以把場<b>減回去</b>。這是理解整件事最快的一條路——浮水印就是一個加上去的訊號，不是什麼玄學。</p>
 <p>用的是跟步驟 3 同一種「差異放大 20 倍」的看法。蓋好的那張看得到指紋鋪滿；<b>還原後那張應該什麼都沒有</b>。</p>
@@ -251,7 +282,8 @@
     <p class="hint" id="ckKeyInfo"></p>
   </div>
 </div>
-<div class="row"><button class="primary" id="btnCheck" disabled>驗這張圖</button><span class="hint" id="ckProg"></span></div>
+<div class="row"><button class="primary" id="btnCheck" disabled>驗這張圖</button>
+  <button id="btnCkRestore" disabled>還原成乾淨的圖</button><span class="hint" id="ckProg"></span></div>
 <div id="ckOut" hidden>
   <div class="verdict" id="ckVerdict"></div>
   <div class="nums">
@@ -260,7 +292,9 @@
   </div>
   <p class="hint" id="ckDetail"></p>
 </div>
+<p class="hint" id="ckRestoreOut" hidden></p>
 <div class="card warn">
+  <p><b>還原只在「原尺寸、沒被轉檔」的圖上有效。</b>被縮過、裁過、存成 JPEG 的圖，格線已經對不回去，減下去只會多加一層雜訊。要拿回乾淨的原圖，用你自己下載的那張 PNG。</p>
   <p><b>「未檢出」不等於「不是你的」。</b>可能是被裁得太兇、被旋轉過、或那張圖本身雜訊太高蓋不上去。這個工具只能給你一個方向，不能當證據。</p>
   <p><b>反過來「檢出」也只證明「這張圖蓋過這把金鑰」</b>，不證明是誰蓋的——金鑰外流的話，別人也能蓋。</p>
 </div>

@@ -172,6 +172,21 @@ try {
   ok('存活矩陣跑完 21 項', rows.length === 21);
   ok('原圖對照活著', rows[0].found, 'z=' + rows[0].z.toFixed(1));
   ok('旋轉 30 度確實死掉(已知限制,不是宣稱)', !rows[rows.length - 1].found);
+  // ── 附錄:v1(logo 當金鑰)的對照。這段的存在是為了讓「白化補得回來」這個結論不會再度失真 ──
+  console.log('\n[6] 附錄:logo 當金鑰');
+  await run(`document.getElementById('v1box').open=true;document.getElementById('btnV1Demo').click();1`);
+  await run(`(async()=>{document.getElementById('btnV1Run').click();
+    for(let i=0;i<60;i++){await new Promise(r=>setTimeout(r,500));
+      if(!document.getElementById('v1Table').hidden&&!document.getElementById('btnV1Run').disabled)return 1}return 0})()`);
+  const v1rows = await run(`[...document.querySelectorAll('#v1Body tr')].map(tr=>[...tr.querySelectorAll('td')].map(td=>td.textContent))`);
+  v1rows.forEach((r) => console.log('    ' + r[0].padEnd(16) + r.slice(1).map((v) => v.padStart(7)).join('')));
+  const vn = (r) => r.slice(1).map(Number);
+  const raw = vn(v1rows[0]), wht = vn(v1rows[1]), rnd = vn(v1rows[2]);
+  ok('白化把低頻 logo 的指紋拉回來', wht[1] > raw[1], raw[1] + ' → ' + wht[1]);
+  ok('金鑰字串的指紋強度仍是最高的', rnd[0] >= wht[0], wht[0] + ' vs ' + rnd[0]);
+  ok('三種指紋裁 75% 都還活著(效能不是放棄 logo 的理由)', raw[3] > 6 && wht[3] > 6 && rnd[3] > 6,
+    [raw[3], wht[3], rnd[3]].join(' / '));
+
   console.log('\n  跟預期不符:' + surprises + ' 項' + (surprises ? '(上面標「不符」的,那幾行是新資訊,要回頭改預期或改演算法)' : ''));
 } finally {
   await cdp.close();

@@ -73,7 +73,8 @@
   })();
   function withITXt(buf, text) {
     const b = new Uint8Array(buf);
-    const payload = new TextEncoder().encode('Comment\0\0\0\0\0' + text); // keyword\0 compressionFlag compressionMethod languageTag\0 translatedKeyword\0
+    // 標記寫進中繼資料,不是只印在圖上 —— 這樣「丟一張圖進來是鑰圖還是作品」才判斷得出來
+    const payload = new TextEncoder().encode('Comment\0\0\0\0\0' + KEY_TAG + '|' + text);
     const chunk = new Uint8Array(12 + payload.length), dv = new DataView(chunk.buffer);
     dv.setUint32(0, payload.length);
     chunk.set(new TextEncoder().encode('iTXt'), 4);
@@ -83,6 +84,10 @@
     out.set(b.subarray(0, 33), 0); out.set(chunk, 33); out.set(b.subarray(33), 33 + chunk.length);
     return out;
   }
+  /* 這張 PNG 是不是鑰圖。判準是中繼資料裡有沒有合法的 secret ——
+     舊版下載的鑰圖沒有 KEY_TAG,一樣認得出來,所以不會因為換格式就失效。 */
+  const isKeyImage = (buf) => !!readITXt(buf);
+
   function readITXt(buf) {
     const b = new Uint8Array(buf);
     if (b.length < 8 || b[0] !== 0x89 || b[1] !== 0x50) return null;
@@ -107,5 +112,5 @@
     setTimeout(() => URL.revokeObjectURL(a.href), 5000);
   }
 
-  root.IWL_KEY = { KEY_TAG, newSecret, render, withITXt, readITXt, download };
+  root.IWL_KEY = { KEY_TAG, newSecret, render, withITXt, readITXt, isKeyImage, download };
 })(window);

@@ -55,8 +55,16 @@
   function pickImage(onImage) {
     const input = document.createElement('input');
     input.type = 'file'; input.accept = 'image/*';
-    input.addEventListener('change', async () => { if (input.files[0]) onImage(await loadFile(input.files[0])); });
+    input.addEventListener('change', async () => { if (input.files[0]) onImage(await loadFile(input.files[0]), input.files[0]); });
     input.click();
+  }
+  /* 有人把鑰圖丟進「作品」欄位時要擋下來。這是會真的發生、而且後果很糟的操作:
+     等於把自己的金鑰當成作品蓋章、甚至下載出去。 */
+  async function rejectIfKeyImage(file, where) {
+    if (!file || file.type !== 'image/png') return false;
+    if (!K.isKeyImage(await file.arrayBuffer())) return false;
+    alert('這張是鑰圖（裡面存著你的金鑰），不是作品。\n\n把它丟到' + where + '沒有意義，而且很危險——鑰圖不該被當成作品散出去。');
+    return true;
   }
   $('btnLogo').addEventListener('click', () => pickImage((im) => { logoImg = im; drawKeyCard(); }));
 
@@ -69,7 +77,7 @@
     el.addEventListener('drop', async (e) => {
       e.preventDefault(); el.classList.remove('over');
       const f = [...e.dataTransfer.files].find((x) => x.type.startsWith('image/'));
-      if (f) onImage(await loadFile(f));
+      if (f) onImage(await loadFile(f), f);
     });
   }
   /* 選好圖一定要有回饋:縮圖 + 尺寸 + 明講下一步該按什麼。
@@ -90,7 +98,7 @@
     $('stampHint').textContent = nodes ? '← 接下來按這顆' : '還缺一把金鑰,先回到步驟 1 產生一把';
     if (!b.disabled) { b.classList.remove('nextcue'); void b.offsetWidth; b.classList.add('nextcue'); }
   }
-  wireDrop('dropArt', (im) => setArt(im, '你選的作品'));
+  wireDrop('dropArt', async (im, f) => { if (await rejectIfKeyImage(f, '作品欄位')) return; setArt(im, '你選的作品'); });
   $('demoArt').addEventListener('click', (e) => { e.preventDefault(); setArt(demoArt(), '內建示範圖'); });
   function demoArt() {
     const c = F.mkCanvas(900, 620), x = F.ctxOf(c);
@@ -241,6 +249,78 @@
     }, 24);
   });
 
+  /* ── 附錄:v1(logo 當金鑰)的對照 ──
+     v1 的程式碼留在 field.js 沒刪,因為「為什麼不行」是這頁最貴的一段教材。
+     這裡讓人親手拿自己的 logo 跑一遍,看那兩個數字差多少。 */
+  let v1Logo = null;
+  function demoLogo() { // 典型的扁平 logo:大色塊、少細節 —— 也就是最低頻的那種
+    const c = F.mkCanvas(240, 240), x = F.ctxOf(c);
+    x.fillStyle = '#f4f1ea'; x.fillRect(0, 0, 240, 240);
+    x.fillStyle = '#1f6f54'; x.beginPath(); x.arc(120, 120, 84, 0, 7); x.fill();
+    x.fillStyle = '#f4f1ea'; x.beginPath(); x.arc(120, 120, 52, 0, 7); x.fill();
+    x.fillStyle = '#c0392b'; x.fillRect(96, 96, 48, 48);
+    return c;
+  }
+  function setV1Logo(img) {
+    v1Logo = img;
+    const src = $('cV1Src'); src.width = 200; src.height = 200;
+    F.ctxOf(src).drawImage(img, 0, 0, 200, 200);
+    const v1 = F.nodesFromImage(img, N);
+    F.drawFingerprint($('cV1Raw'), v1.raw, N, 10);
+    F.drawFingerprint($('cV1Fp'), v1.nodes, N, 10);
+    F.drawFingerprint($('cV2Fp'), v2Nodes(), N, 10);
+    $('v1RawStr').textContent = '強度 ' + P.nodeStrength(v1.raw).toFixed(3);
+    $('v1Str').textContent = '強度 ' + v1.strength.toFixed(3);
+    $('v2Str').textContent = '強度 ' + P.nodeStrength(v2Nodes()).toFixed(3);
+    $('v1Fp').hidden = false; $('v1FpNote').hidden = false;
+    $('btnV1Run').disabled = false;
+  }
+  // 沒做步驟 1 也能玩:當場借一把
+  let v1Spare = null;
+  const v2Nodes = () => nodes || (v1Spare = v1Spare || P.nodesFromSecret(K.newSecret(), N));
+
+  wireDrop('dropV1', (im) => setV1Logo(im));
+  $('btnV1Demo').addEventListener('click', () => setV1Logo(demoLogo()));
+  $('btnV1Run').addEventListener('click', async () => {
+    const b = $('btnV1Run'); b.disabled = true;
+    const base = D.canvasOf(artImg || demoArt());
+    const v1 = F.nodesFromImage(v1Logo, N);
+    const keys = [
+      { name: 'logo（白化前）', nodes: v1.raw },
+      { name: 'logo（白化後）', nodes: v1.nodes },
+      { name: '金鑰字串', nodes: v2Nodes() },
+    ];
+    const rows = [];
+    for (const k of keys) {
+      $('v1Prog').textContent = '量 ' + k.name + '…';
+      await D.tick();
+      const c = F.mkCanvas(base.width, base.height);
+      F.ctxOf(c).drawImage(base, 0, 0);
+      const im = F.ctxOf(c).getImageData(0, 0, c.width, c.height);
+      P.embed(im.data, c.width, c.height, k.nodes, N);
+      F.ctxOf(c).putImageData(im, 0, 0);
+      const full = P.detect(im.data, c.width, c.height, k.nodes, N);
+      const half = D.crop(c, 0.75); // 裁一半兩邊都死,分不出差別;75% 兩邊都活,數字才可比
+      const hd = D.dataOf(half);
+      const cut = P.detect(hd, half.width, half.height, k.nodes, N);
+      rows.push({ name: k.name, str: P.nodeStrength(k.nodes), full, cut });
+    }
+    $('v1Body').innerHTML = rows.map((r) => {
+      const cell = (d) => '<td class="num' + (d.found ? '' : ' bad') + '">' + d.z.toFixed(1) + '</td>'
+        + '<td class="num' + (d.found ? '' : ' bad') + '">' + d.psr.toFixed(1) + '</td>';
+      return '<tr><td>' + r.name + '</td><td class="num">' + r.str.toFixed(3) + '</td>' + cell(r.full) + cell(r.cut) + '</tr>';
+    }).join('');
+    $('v1Table').hidden = false;
+    $('v1Note').hidden = false;
+    $('v1Note').innerHTML = '同一張圖、同樣的 ±2/255、同樣的偵測器，差別只在指紋從哪裡來。'
+      + '紅色是沒過雙門檻（z &gt; ' + P.Z_MIN + ' 且 PSR &gt; ' + P.PSR_MIN + '）的數字。'
+      + '<b>白化前那一列最低，白化後拉回來一大截，但仍然追不上金鑰字串。</b>'
+      + '你的 logo 越平滑、色塊越大，白化前那一列會越慘（實測一張純漸層是 13.1，扁平色塊 21.8，金鑰字串 26.8）。'
+      + '差距是真的，但三列通常都還是「活」——效能不是放棄它的理由，「公開」才是。';
+    $('v1Prog').textContent = '';
+    b.disabled = false;
+  });
+
   // ── 步驟 5:還原 ──
   /* 只給一行「99% 相同」等於沒教。用跟步驟 3 同一種差異放大來看:
      蓋好的看得到指紋鋪滿、還原後一片空白、用別人的金鑰硬減則變得更亂 —— 三張並排,
@@ -314,7 +394,7 @@
 
   // ── 步驟 7:拿任意一張圖 + 任意一把金鑰來驗(實際使用情境) ──
   let ckImg = null, ckNodes = null;
-  const ckReady = () => { $('btnCheck').disabled = !(ckImg && ckNodes); };
+  const ckReady = () => { const ok = !(ckImg && ckNodes); $('btnCheck').disabled = ok; $('btnCkRestore').disabled = ok; };
   function setCkImage(im, name) {
     ckImg = im;
     const W = im.naturalWidth || im.width, H = im.naturalHeight || im.height;
@@ -335,7 +415,7 @@
     $('dropCheckKey').classList.add('ready');
     ckReady();
   }
-  wireDrop('dropCheckImg', (im) => setCkImage(im, '你選的圖'));
+  wireDrop('dropCheckImg', async (im, f) => { if (await rejectIfKeyImage(f, '待驗圖欄位')) return; setCkImage(im, '你選的圖'); });
   // 鑰圖走檔案:要讀 PNG 的 iTXt,不能只拿 Image 物件
   (function wireKeyDrop() {
     const el = $('dropCheckKey');
@@ -370,6 +450,33 @@
     $('ckDetail').textContent = '門檻 z > ' + r.zMin + ' 且 PSR > ' + r.psrMin + '。'
       + (r.scale && r.scale !== 1 ? '這張圖被縮過，尺度搜尋用 ×' + r.scale.toFixed(2) + ' 還原回去才驗出來。' : '');
     $('ckProg').textContent = ''; b.disabled = false;
+  });
+
+  /* 還原任意一張圖。步驟 5 的還原吃的是記憶體裡剛蓋好的那張,所以你下載之後
+     明天想拿回乾淨原圖是做不到的 —— 這裡補上那個入口,用的是同一組輸入。 */
+  $('btnCkRestore').addEventListener('click', async () => {
+    const b = $('btnCkRestore'); b.disabled = true; b.textContent = '計算中…';
+    const W = ckImg.naturalWidth || ckImg.width, H = ckImg.naturalHeight || ckImg.height;
+    const c = F.mkCanvas(W, H); F.ctxOf(c).drawImage(ckImg, 0, 0);
+    const im = F.ctxOf(c).getImageData(0, 0, W, H);
+    const before = P.detect(im.data, W, H, ckNodes, N);
+    P.unembed(im.data, W, H, ckNodes, N);
+    F.ctxOf(c).putImageData(im, 0, 0);
+    const after = P.detect(im.data, W, H, ckNodes, N);
+    $('ckRestoreOut').hidden = false;
+    $('ckRestoreOut').innerHTML = '還原前 z ' + before.z.toFixed(1) + '（' + (before.found ? '檢出' : '未檢出') + '）'
+      + '　→　還原後 z ' + after.z.toFixed(1) + '（' + (after.found ? '檢出' : '未檢出') + '）。'
+      + (before.found && !after.found ? '<b>浮水印拿掉了</b>，乾淨的檔案開始下載。'
+         : before.found ? '沒有完全拿掉——這張圖大概被縮放或轉檔過，格線對不回去。'
+         : '這張圖本來就驗不出這把金鑰，沒有東西可以減。');
+    if (before.found && !after.found) {
+      c.toBlob((blob) => {
+        const a = document.createElement('a');
+        a.href = URL.createObjectURL(blob); a.download = 'restored.png'; a.click();
+        setTimeout(() => URL.revokeObjectURL(a.href), 5000);
+      }, 'image/png');
+    }
+    b.disabled = false; b.textContent = '還原成乾淨的圖';
   });
 
   // 鑰圖拖進來就讀出金鑰(中繼資料),讓「丟一張圖進來」自動分辨是鑰圖還是作品
