@@ -129,7 +129,7 @@ try {
     console.log('    ' + r.name.padEnd(32) + r.size.padEnd(12) + r.z.toFixed(1).padStart(7) + r.psr.toFixed(1).padStart(7) + '  ' +
       (r.found ? '活著' : '死了') + '   ' + (r.expect ? '應該活' : '應該死') + (s ? '  ← 不符' : ''));
   }
-  ok('存活矩陣跑完 13 項', rows.length === 13);
+  ok('存活矩陣跑完 15 項', rows.length === 15);
   ok('原圖對照活著', rows[0].found, 'z=' + rows[0].z.toFixed(1));
   ok('旋轉 30 度確實死掉(已知限制,不是宣稱)', !rows[rows.length - 1].found);
   console.log('\n  跟預期不符:' + surprises + ' 項' + (surprises ? '(上面標「不符」的,那幾行是新資訊,要回頭改預期或改演算法)' : ''));

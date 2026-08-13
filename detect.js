@@ -84,7 +84,8 @@
 
   /* 存活矩陣。expect 是「應該活還是應該死」——寫下預期才叫實驗,不然只是把數字印出來。
 
-     這組預期是 2026-08-13 用 test/survive-matrix.mjs 量的,四種代表性圖片各一把新金鑰:
+     這組預期是 2026-08-13 用 test/survive-matrix.mjs 量的(15 項,含裁切+縮小的組合),
+     四種代表性圖片各一把新金鑰:
      平滑漸層(插畫)、有感光雜訊(實拍)、高細節密集紋理、大面積淺色(商品圖)。
      其中「高細節密集紋理」連原圖都驗不出來(z=6.1),那不是攻擊失敗,是 ±2 的訊號
      從一開始就蓋不過那張圖的雜訊底 —— 列進界限,不列進預期,否則每一行都會變成 3/4。
@@ -93,7 +94,10 @@
      跟上一版(抄自設計文件、在另一張圖上量的)最大的差別:
        裁切從 true 改成 false —— 只有大面積淺色那張活得下來,另外兩張都死
        JPEG 50 從 false 改成 true —— 三張都活
-       縮到 25% 從死變活 —— 那是搜尋範圍的 bug,不是訊號沒了 */
+       縮到 25% 從死變活 —— 那是搜尋範圍的 bug,不是訊號沒了
+
+     「裁切+縮小」的組合(截圖再上傳的真實路徑)兩項都是 1/4,跟單純裁切一致:
+     大面積淺色那張活,其餘都死。決定命運的是雜訊底,不是被切掉多少。 */
   const ATTACKS = [
     { name: '原圖(對照)', expect: true, run: async (c) => c },
     { name: 'JPEG 品質 90', expect: true, run: (c) => jpeg(c, 0.9) },
@@ -105,6 +109,8 @@
     { name: '縮到 50%', expect: true, run: async (c) => resize(c, 0.5) },
     { name: '縮到 25%', expect: true, run: async (c) => resize(c, 0.25) },
     { name: '縮到 15%', expect: false, run: async (c) => resize(c, 0.15) },
+    { name: '裁一半再縮一半', expect: false, run: async (c) => resize(crop(c, 0.5), 0.5) },
+    { name: '裁到 30% 再縮到 40%', expect: false, run: async (c) => resize(crop(c, 0.3), 0.4) },
     { name: '模擬社群上傳(縮到 1080 寬 + JPEG 80)', expect: true, run: (c) => jpeg(resize(c, Math.min(1, 1080 / c.width)), 0.8) },
     { name: '旋轉 5 度', expect: false, run: async (c) => rotate(c, 5) },
     { name: '旋轉 30 度', expect: false, run: async (c) => rotate(c, 30) },
@@ -116,10 +122,15 @@
       const c = await a.run(base);
       await tick();
       const r = await detectWithScale(c, nodes, N);
-      // 縮圖:只寫尺寸看不出「被摧殘成什麼樣」,而那正是這張表要讓人看見的東西
-      const tw = 108, th = Math.max(1, Math.round(c.height * tw / c.width));
-      const tc = F.mkCanvas(tw, th); const tx = F.ctxOf(tc);
-      tx.imageSmoothingEnabled = true; tx.drawImage(c, 0, 0, tw, th);
+      /* 縮圖要保留「相對於原圖」的比例,不能每張都塞滿同樣寬度 —— 那樣縮到 15% 跟原圖
+         看起來一樣大,「被縮小」「被裁掉」這兩件事就整個被抹掉了,而那正是這張表要讓人
+         看見的東西。做法:固定大小的框,裡面按真實比例畫,置中。 */
+      const BW = 150, BH = Math.max(1, Math.round(BW * base.height / base.width));
+      const tc = F.mkCanvas(BW, BH); const tx = F.ctxOf(tc);
+      tx.fillStyle = '#eef1ef'; tx.fillRect(0, 0, BW, BH);
+      const k = BW / base.width, dw = Math.max(1, c.width * k), dh = Math.max(1, c.height * k);
+      tx.imageSmoothingEnabled = true; tx.imageSmoothingQuality = 'high';
+      tx.drawImage(c, (BW - dw) / 2, (BH - dh) / 2, dw, dh);
       const row = { name: a.name, expect: a.expect, z: r.z, psr: r.psr, found: r.found, scale: r.scale,
                     size: c.width + '×' + c.height, thumb: tc.toDataURL('image/jpeg', 0.8) };
       out.push(row);

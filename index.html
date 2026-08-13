@@ -76,7 +76,7 @@
     background:#eef4f0;border-radius:10px;padding:.5rem .8rem;display:inline-block;word-break:break-all;}
   .ok{color:var(--accent);font-weight:700;} .dead{color:var(--bad);font-weight:700;}
   .surprise{background:var(--warn-bg);}
-  .thumb{width:108px;display:block;border-radius:6px;border:1px solid var(--line);}
+  .thumb{width:150px;display:block;border-radius:6px;border:1px solid var(--line);}
   footer{margin-top:3.5rem;border-top:1px solid var(--line);padding-top:1.4rem;font-size:.9rem;color:var(--muted);}
   footer a{margin-right:1.2rem;display:inline-block;}
   footer .promo{margin-bottom:.4rem;}
@@ -229,7 +229,7 @@
 <p class="hint">「預期」是 2026-08-13 用 <code>test/survive-matrix.mjs</code> 在四種代表性圖片上量出來的（平滑插畫、實拍照片、高細節紋理、大面積淺色），三張全活才寫「應該活」。<b>不是保證</b>——存活很吃圖片本身。跟預期不符的那幾行會標成黃底，那才是新資訊。</p>
 <div class="row"><button class="primary" id="btnSurvive" disabled>跑存活測試</button><span class="hint" id="survProg"></span></div>
 <table id="survTable" hidden>
-  <thead><tr><th>摧殘後的樣子</th><th>摧殘方式</th><th class="num">z</th><th class="num">PSR</th><th>結果</th><th>預期</th></tr></thead>
+  <thead><tr><th>摧殘後的樣子<br><span class="hint">同一個框，按真實比例畫</span></th><th>摧殘方式</th><th class="num">z</th><th class="num">PSR</th><th>結果</th><th>預期</th></tr></thead>
   <tbody id="survBody"></tbody>
 </table>
 
