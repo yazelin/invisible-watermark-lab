@@ -101,8 +101,12 @@
       x.fillStyle = `hsla(${i * 37 % 360},55%,${45 + i % 30}%,.5)`;
       x.beginPath(); x.arc(60 + (i * 137) % 820, 70 + (i * 211) % 480, 24 + (i * 13) % 70, 0, 7); x.fill();
     }
-    const im = x.getImageData(0, 0, 900, 620), d = im.data; // 一點雜訊:真實照片不會是數學平滑的
-    for (let i = 0; i < d.length; i += 4) { const n = (Math.random() - .5) * 6; d[i] += n; d[i + 1] += n; d[i + 2] += n; }
+    /* 雜訊用固定種子,不用 Math.random:示範圖每次重整都不一樣的話,
+       頁面上量到的 z、PSR、存活結果就不可重現,別人照著跑會得到不同的數字。 */
+    const im = x.getImageData(0, 0, 900, 620), d = im.data;
+    let sd = 20260813;
+    const rnd = () => (sd = (sd * 1103515245 + 12345) & 0x7fffffff) / 0x7fffffff;
+    for (let i = 0; i < d.length; i += 4) { const n = (rnd() - .5) * 6; d[i] += n; d[i + 1] += n; d[i + 2] += n; }
     x.putImageData(im, 0, 0);
     return c;
   }

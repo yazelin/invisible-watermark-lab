@@ -41,7 +41,7 @@
 
 乾淨圖的分數分布很窄，所以 PSR 會衝高；別人的金鑰則相反，z 會跟著嵌入強度一起放大（你蓋得越用力，別人隨便一把金鑰撞出來的最高分也越高），但峰值並不突出。
 
-所以判定是 `z > 6` **而且** `PSR > 6.5`。實測 18/18 真陽性、90/90 真陰性、零誤判（`node test/calibrate.mjs`）。
+所以判定是 `z > 6` **而且** `PSR > 6.5`。實測真陽性 40/40、假陽性 0/80，最接近門檻的距離 3.5（`node test/calibrate.mjs`）。
 
 ## 為什麼金鑰不是你的 logo
 
@@ -102,8 +102,8 @@ app.js          頁面互動
 vendor/         qrcode-generator.js（MIT, Kazuhiko Arase）
 test/
   pure.test.mjs   純邏輯 16 項，含四條負控制
-  calibrate.mjs   量 null 分布、定門檻
-  survive-matrix.mjs  在四種代表性圖片上重量存活矩陣,產生 expect 的出處
+  calibrate.mjs   量 null 分布、定門檻(Z_MIN / PSR_MIN 的出處)
+  survive-matrix.mjs  在四種代表性圖片上重量存活矩陣(ATTACKS 預期值的出處)
   e2e.mjs         真瀏覽器：產金鑰 → 蓋章 → 驗證 → 偽造 → 還原 → 存活矩陣
 ```
 
