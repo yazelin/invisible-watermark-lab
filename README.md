@@ -118,4 +118,4 @@ MIT · 林亞澤
 
 ---
 
-[GitHub](https://github.com/yazelin/invisible-watermark-lab) · [Facebook](https://www.facebook.com/yazelin) · [請我喝咖啡](https://buymeacoffee.com/yazelin)
+[GitHub](https://github.com/yazelin/invisible-watermark-lab) · [Facebook](https://www.facebook.com/yaze.lin.gm) · [請我喝咖啡](https://buymeacoffee.com/yazelin)
