@@ -237,6 +237,34 @@
   <tbody id="survBody"></tbody>
 </table>
 
+<h2><span class="step">7</span>拿一張圖來驗（實際會用到的就是這一步）</h2>
+<p>前面六步是為了讓你看懂它怎麼運作。<b>真正要用的時候是這樣</b>：作品流出去了，你拿回一張圖、配上你當初存的鑰圖，問它「這是不是我的」。
+兩邊都不需要是這個分頁產生的——圖可以是別人傳給你的，金鑰可以是你半年前下載的那張鑰圖。</p>
+<div class="two">
+  <div>
+    <div class="drop" id="dropCheckImg"><span id="ckImgTxt">要驗的圖</span><span class="hint"><br>點這裡或拖進來</span></div>
+    <figure id="ckImgFig" hidden><canvas id="cCkImg"></canvas><figcaption class="hint" id="ckImgInfo"></figcaption></figure>
+  </div>
+  <div>
+    <div class="drop" id="dropCheckKey"><span id="ckKeyTxt">你的鑰圖</span><span class="hint"><br>拖鑰圖進來，會自動讀出金鑰</span></div>
+    <div class="row"><input id="ckSecret" placeholder="或直接貼上 IWL1-…" style="font-family:var(--mono);padding:.4rem .7rem;border:1px solid var(--line);border-radius:8px;flex:1;min-width:12rem"></div>
+    <p class="hint" id="ckKeyInfo"></p>
+  </div>
+</div>
+<div class="row"><button class="primary" id="btnCheck" disabled>驗這張圖</button><span class="hint" id="ckProg"></span></div>
+<div id="ckOut" hidden>
+  <div class="verdict" id="ckVerdict"></div>
+  <div class="nums">
+    <div><b id="ckZ"></b><span>z</span></div>
+    <div><b id="ckPsr"></b><span>PSR</span></div>
+  </div>
+  <p class="hint" id="ckDetail"></p>
+</div>
+<div class="card warn">
+  <p><b>「未檢出」不等於「不是你的」。</b>可能是被裁得太兇、被旋轉過、或那張圖本身雜訊太高蓋不上去。這個工具只能給你一個方向，不能當證據。</p>
+  <p><b>反過來「檢出」也只證明「這張圖蓋過這把金鑰」</b>，不證明是誰蓋的——金鑰外流的話，別人也能蓋。</p>
+</div>
+
 <h2>誠實的界限</h2>
 <div class="card warn">
   <p><b>開源，所以拔得掉。</b>防的是順手盜用，不是防偽。原始碼就在下面的連結裡。</p>

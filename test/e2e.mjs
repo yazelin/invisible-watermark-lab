@@ -105,6 +105,45 @@ try {
   const pct = parseFloat((res.match(/([\d.]+)%/) || [])[1] || '0');
   ok('減回去之後幾乎逐像素還原', pct > 99, pct + '% 相同');
 
+  /* 步驟 7 是實際使用情境:拿回一張圖 + 你保存的鑰圖,問「這是不是我的」。
+     兩邊都不是這個分頁產生的,所以要走真的檔案(鑰圖要讀 PNG 的 iTXt)。 */
+  console.log('\n步驟 7:拿任意圖 + 任意金鑰來驗(實際使用情境)');
+  const ck = await run(`(async () => {
+    const P = window.IWL, F = window.IWL_FIELD, K = window.IWL_KEY, N = 16;
+    const sec = K.newSecret(), nodes = P.nodesFromSecret(sec, N);
+    const card = K.render(sec, null, N);
+    const cardPng = await new Promise((r) => card.toBlob(r, 'image/png'));
+    const keyFile = new File([K.withITXt(await cardPng.arrayBuffer(), sec)], 'k.png', { type: 'image/png' });
+    const art = F.mkCanvas(800, 560), ax = F.ctxOf(art);
+    const g = ax.createLinearGradient(0, 0, 800, 560); g.addColorStop(0, '#356'); g.addColorStop(1, '#eca');
+    ax.fillStyle = g; ax.fillRect(0, 0, 800, 560);
+    const im = ax.getImageData(0, 0, 800, 560); P.embed(im.data, 800, 560, nodes, N); ax.putImageData(im, 0, 0);
+    const artPng = await new Promise((r) => art.toBlob(r, 'image/png'));
+    const drop = (el, file) => { const dt = new DataTransfer(); dt.items.add(file);
+      el.dispatchEvent(new DragEvent('drop', { dataTransfer: dt, bubbles: true, cancelable: true })); };
+    drop(document.getElementById('dropCheckKey'), keyFile);
+    drop(document.getElementById('dropCheckImg'), new File([artPng], 'w.png', { type: 'image/png' }));
+    await new Promise((r) => setTimeout(r, 700));
+    const readKey = document.getElementById('ckKeyInfo').textContent.includes(sec);
+    document.getElementById('btnCheck').click();
+    await new Promise((r) => { const t = setInterval(() => {
+      if (!document.getElementById('btnCheck').disabled && !document.getElementById('ckOut').hidden) { clearInterval(t); r(); } }, 200); });
+    const good = { v: document.getElementById('ckVerdict').textContent,
+                   z: parseFloat(document.getElementById('ckZ').textContent),
+                   psr: parseFloat(document.getElementById('ckPsr').textContent) };
+    const el = document.getElementById('ckSecret');
+    el.value = K.newSecret(); el.dispatchEvent(new Event('change'));
+    document.getElementById('btnCheck').click();
+    await new Promise((r) => { const t = setInterval(() => {
+      if (!document.getElementById('btnCheck').disabled) { clearInterval(t); r(); } }, 200); });
+    return { readKey, good, bad: { v: document.getElementById('ckVerdict').textContent,
+             z: parseFloat(document.getElementById('ckZ').textContent),
+             psr: parseFloat(document.getElementById('ckPsr').textContent) } };
+  })()`);
+  ok('鑰圖丟進去能讀出金鑰(PNG iTXt)', ck.readKey);
+  ok('外部的圖 + 外部的鑰圖 → 檢出', /^檢出/.test(ck.good.v), 'z=' + ck.good.z + ' psr=' + ck.good.psr);
+  ok('同一張圖換別把金鑰 → 未檢出', /^未檢出/.test(ck.bad.v), 'z=' + ck.bad.z + ' psr=' + ck.bad.psr);
+
   console.log('\n步驟 4:存活矩陣(真的 JPEG / 裁切 / 縮放 / 旋轉)');
   const rows = await run(`(async () => {
     // 走頁面真正的按鈕,不要自己在測試裡重組物件 —— 第一版就是抓了畫面上縮小顯示的 canvas,

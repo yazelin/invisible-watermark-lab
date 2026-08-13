@@ -312,6 +312,66 @@
     btn.disabled = false;
   });
 
+  // ── 步驟 7:拿任意一張圖 + 任意一把金鑰來驗(實際使用情境) ──
+  let ckImg = null, ckNodes = null;
+  const ckReady = () => { $('btnCheck').disabled = !(ckImg && ckNodes); };
+  function setCkImage(im, name) {
+    ckImg = im;
+    const W = im.naturalWidth || im.width, H = im.naturalHeight || im.height;
+    const c = $('cCkImg'), sc = Math.min(1, 380 / W);
+    c.width = Math.round(W * sc); c.height = Math.round(H * sc);
+    F.ctxOf(c).drawImage(im, 0, 0, c.width, c.height);
+    $('ckImgFig').hidden = false;
+    $('ckImgInfo').textContent = name + '　' + W + ' × ' + H + ' 像素';
+    $('ckImgTxt').textContent = '換一張圖';
+    $('dropCheckImg').classList.add('ready');
+    ckReady();
+  }
+  function setCkSecret(sec, how) {
+    if (!P.isSecret(sec)) { $('ckKeyInfo').textContent = '這不是有效的金鑰格式（應為 IWL1-XXXXX-XXXXX-XXXXX-XXXXX）'; return; }
+    ckNodes = P.nodesFromSecret(String(sec).trim().toUpperCase(), N);
+    $('ckKeyInfo').innerHTML = '金鑰：<b>' + String(sec).trim().toUpperCase() + '</b>（' + how + '）';
+    $('ckKeyTxt').textContent = '換一把金鑰';
+    $('dropCheckKey').classList.add('ready');
+    ckReady();
+  }
+  wireDrop('dropCheckImg', (im) => setCkImage(im, '你選的圖'));
+  // 鑰圖走檔案:要讀 PNG 的 iTXt,不能只拿 Image 物件
+  (function wireKeyDrop() {
+    const el = $('dropCheckKey');
+    const take = async (file) => {
+      const buf = await file.arrayBuffer();
+      const sec = K.readITXt(buf);
+      if (sec) setCkSecret(sec, '從鑰圖的中繼資料讀出來');
+      else $('ckKeyInfo').textContent = '這張圖裡沒有金鑰的中繼資料。如果只剩截圖，請用手機掃 QR 或照著明文抄，貼到下面的欄位。';
+    };
+    const input = document.createElement('input');
+    input.type = 'file'; input.accept = 'image/png'; input.hidden = true;
+    document.body.appendChild(input);
+    input.addEventListener('change', () => { if (input.files[0]) take(input.files[0]); });
+    el.addEventListener('click', () => input.click());
+    el.addEventListener('dragover', (e) => { e.preventDefault(); el.classList.add('over'); });
+    el.addEventListener('dragleave', () => el.classList.remove('over'));
+    el.addEventListener('drop', async (e) => {
+      e.preventDefault(); e.stopPropagation(); el.classList.remove('over');
+      const f = [...e.dataTransfer.files].find((x) => x.type === 'image/png');
+      if (f) take(f); else $('ckKeyInfo').textContent = '鑰圖要是原本下載的 PNG，中繼資料才讀得到。';
+    });
+  })();
+  $('ckSecret').addEventListener('change', (e) => setCkSecret(e.target.value, '你貼上的'));
+  $('btnCheck').addEventListener('click', async () => {
+    const b = $('btnCheck'); b.disabled = true; $('ckProg').textContent = '驗證中…（被縮過的圖要搜尋還原倍率，可能要幾秒）';
+    const r = await D.detectWithScale(ckImg, ckNodes, N);
+    $('ckOut').hidden = false;
+    $('ckVerdict').className = 'verdict ' + (r.found ? 'yes' : 'no');
+    $('ckVerdict').textContent = r.found ? '檢出：這張圖蓋過這把金鑰' : '未檢出';
+    $('ckZ').textContent = r.z.toFixed(1); $('ckZ').className = r.z > r.zMin ? 'pass' : 'fail';
+    $('ckPsr').textContent = r.psr.toFixed(1); $('ckPsr').className = r.psr > r.psrMin ? 'pass' : 'fail';
+    $('ckDetail').textContent = '門檻 z > ' + r.zMin + ' 且 PSR > ' + r.psrMin + '。'
+      + (r.scale && r.scale !== 1 ? '這張圖被縮過，尺度搜尋用 ×' + r.scale.toFixed(2) + ' 還原回去才驗出來。' : '');
+    $('ckProg').textContent = ''; b.disabled = false;
+  });
+
   // 鑰圖拖進來就讀出金鑰(中繼資料),讓「丟一張圖進來」自動分辨是鑰圖還是作品
   document.addEventListener('drop', async (e) => {
     const f = [...(e.dataTransfer ? e.dataTransfer.files : [])].find((x) => x.type === 'image/png');
