@@ -54,8 +54,13 @@
   figure{margin:0;} figure canvas,figure img{width:100%;display:block;border:1px solid var(--line);border-radius:10px;background:#fff;}
   figure.px canvas{image-rendering:pixelated;}
   figcaption{font-size:.83rem;color:var(--muted);margin-top:.35rem;line-height:1.55;}
-  .verdict{font-size:1.08rem;font-weight:700;padding:.7rem 1rem;border-radius:12px;margin:.7rem 0;}
-  .yes{background:var(--accent-soft);color:var(--accent);} .no{background:var(--bad-bg);color:var(--bad);}
+  /* 判定要一眼看得出來。原本用淡底色 + 深字,在白卡片上幾乎沒有存在感,
+     使用者按完不確定發生了什麼。改成實心底 + 白字,兩欄並排時對比更明顯。 */
+  .verdict{font-size:1.2rem;font-weight:800;padding:.85rem 1.1rem;border-radius:12px;margin:.7rem 0;
+    letter-spacing:.02em;}
+  .yes{background:var(--accent);color:#fff;} .no{background:var(--bad);color:#fff;}
+  .nums b.fail{color:var(--bad);} .nums b.pass{color:var(--accent);}
+  .nums span em{font-style:normal;font-weight:700;}
   .nums{display:flex;gap:2rem;flex-wrap:wrap;margin:.6rem 0;}
   .nums div{min-width:110px;} .nums b{display:block;font-size:1.9rem;line-height:1.15;font-variant-numeric:tabular-nums;}
   .nums span{font-size:.83rem;color:var(--muted);}
@@ -71,6 +76,7 @@
     background:#eef4f0;border-radius:10px;padding:.5rem .8rem;display:inline-block;word-break:break-all;}
   .ok{color:var(--accent);font-weight:700;} .dead{color:var(--bad);font-weight:700;}
   .surprise{background:var(--warn-bg);}
+  .thumb{width:108px;display:block;border-radius:6px;border:1px solid var(--line);}
   footer{margin-top:3.5rem;border-top:1px solid var(--line);padding-top:1.4rem;font-size:.9rem;color:var(--muted);}
   footer a{margin-right:1.2rem;display:inline-block;}
   footer .promo{margin-bottom:.4rem;}
@@ -152,20 +158,33 @@
 </div>
 
 <h2><span class="step">4</span>驗給自己看，然後試著偽造</h2>
-<div class="row">
-  <button class="primary" id="btnVerify" disabled>用我的金鑰驗證</button>
-  <button id="btnForge" disabled>拿別人的金鑰驗（偽造測試）</button>
-</div>
-<div id="verifyOut" hidden>
-  <div class="verdict" id="vVerdict"></div>
-  <div class="nums">
-    <div><b id="vZ"></b><span>z：峰值有多強<br>要 &gt; <span id="zMin"></span></span></div>
-    <div><b id="vPsr"></b><span>PSR：峰值比旁瓣突出多少<br>要 &gt; <span id="psrMin"></span></span></div>
+<p>驗證會給你<b>兩個數字</b>，先講清楚它們各是什麼，等一下看到才有意義：</p>
+<ul>
+  <li><b>z：峰值有多強。</b>把你的指紋跟圖上每一格相乘再加起來，對齊時會累積成一個很大的數。它衡量的是「訊號有多明顯」。</li>
+  <li><b>PSR：峰值比旁瓣突出多少。</b>同一次搜尋裡還有幾萬個沒對齊的位置，它們的分數就是「旁瓣」。PSR 問的是<b>那個最高分有沒有明顯高過其他所有位置</b>，而不是它本身多大。這是雷達與相關濾波器的標準判準，不是這頁發明的。</li>
+</ul>
+<p>為什麼需要第二個數字，下面驗完會用兩張熱圖說明——那是這一節最重要的一張圖。</p>
+<div class="row"><button class="primary" id="btnVerify" disabled>驗證</button>
+  <span class="hint">一次跑兩把金鑰：你的，和一把隨機產生的「別人的」。</span></div>
+<div class="two" id="verifyOut" hidden>
+  <div>
+    <div class="verdict" id="vVerdict"></div>
+    <div class="nums">
+      <div><b id="vZ"></b><span>z：峰值有多強<br>要 &gt; <span id="zMin"></span></span></div>
+      <div><b id="vPsr"></b><span>PSR：突出多少<br>要 &gt; <span id="psrMin"></span></span></div>
+    </div>
+    <figure class="px"><canvas id="cMapGood"></canvas>
+      <figcaption><b>你的金鑰</b>：把指紋在 256 個可能的位移上各試一次。<b>只有一格會亮</b>，那就是對齊的位置。</figcaption></figure>
+    <p class="hint" id="vDetail"></p>
   </div>
-  <p class="hint" id="vDetail"></p>
-  <div class="two">
-    <figure class="px"><canvas id="cMapGood"></canvas><figcaption><b>用對的金鑰</b>：把指紋在 256 個可能的位移上各試一次，畫成熱圖。<b>只有一格會亮</b>——那就是對齊的位置。</figcaption></figure>
-    <figure class="px"><canvas id="cMapBad"></canvas><figcaption><b>用別人的金鑰</b>：整片都是雜訊，沒有任何一格特別突出。這就是 PSR 在量的東西。</figcaption></figure>
+  <div>
+    <div class="verdict" id="fVerdict"></div>
+    <div class="nums">
+      <div><b id="fZ"></b><span>z</span></div>
+      <div><b id="fPsr"></b><span>PSR</span></div>
+    </div>
+    <figure class="px"><canvas id="cMapBad"></canvas>
+      <figcaption><b>別人的金鑰</b>：整片都是雜訊，沒有任何一格突出。<b>兩張用同一個色階畫</b>，所以這裡的「最亮」其實很暗——這就是 PSR 在量的東西。</figcaption></figure>
   </div>
 </div>
 <div class="card">
@@ -190,11 +209,11 @@
 </div>
 
 <h2><span class="step">6</span>自己把它弄壞</h2>
-<p>把蓋好的圖摧殘一輪再各驗一次。<b>這張表同時證明「它真的活得下來」和「它有明確的極限」</b>，比任何文案都可信。</p>
+<p><b>用的就是你上面剛蓋好的那張圖</b>，不是另外準備的範例。把它摧殘一輪再各驗一次。<b>這張表同時證明「它真的活得下來」和「它有明確的極限」</b>，比任何文案都可信。</p>
 <p class="hint">「預期」是 2026-08-13 用 <code>test/survive-matrix.mjs</code> 在四種代表性圖片上量出來的（平滑插畫、實拍照片、高細節紋理、大面積淺色），三張全活才寫「應該活」。<b>不是保證</b>——存活很吃圖片本身。跟預期不符的那幾行會標成黃底，那才是新資訊。</p>
 <div class="row"><button class="primary" id="btnSurvive" disabled>跑存活測試</button><span class="hint" id="survProg"></span></div>
 <table id="survTable" hidden>
-  <thead><tr><th>摧殘方式</th><th>尺寸</th><th class="num">z</th><th class="num">PSR</th><th>結果</th><th>預期</th></tr></thead>
+  <thead><tr><th>摧殘後的樣子</th><th>摧殘方式</th><th class="num">z</th><th class="num">PSR</th><th>結果</th><th>預期</th></tr></thead>
   <tbody id="survBody"></tbody>
 </table>
 

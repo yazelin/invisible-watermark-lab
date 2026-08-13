@@ -15,7 +15,12 @@
 
   /* 縮放會破壞 16px 格線對齊,平移搜尋補不了,但訊號還在(平滑場是低頻,重新取樣殺不掉)。
      把「還原倍率」也納入搜尋:粗掃一遍,再在最高分附近細掃。只在直接偵測失敗時啟動。 */
-  function detectWithScale(src, nodes, N, onProgress, wantMap) {
+  /* 讓出主執行緒:整套偵測是同步的,尺度搜尋又要掃 30 幾個倍率,
+     全部塞在一個 tick 裡會把頁面凍住,Chrome 會跳「這個網頁沒有回應」。
+     每掃一個倍率就讓瀏覽器喘一口氣,總時間差不多,但頁面不會死。 */
+  const tick = () => new Promise((r) => setTimeout(r, 0));
+
+  async function detectWithScale(src, nodes, N, onProgress, wantMap) {
     const c = canvasOf(src);
     const direct = P.detect(dataOf(c), c.width, c.height, nodes, N, { wantMap: !!wantMap });
     if (direct.found) return { ...direct, scale: 1 };
@@ -33,6 +38,7 @@
        2.6 以上改用 0.2 的步長,那個區間的格線容忍度比較寬,不必掃那麼細。 */
     let best = { ...direct, scale: 1 };
     for (let f = 1.1; f <= 6.05; f += (f < 2.6 ? 0.1 : 0.2)) {
+      await tick();
       const r = at(f);
       if (onProgress) onProgress(f, r.z);
       if (r.z > best.z) best = { ...r, scale: f };
@@ -40,6 +46,7 @@
     if (best.scale !== 1) {
       for (let f = best.scale - 0.09; f <= best.scale + 0.09; f += 0.02) {
         if (f <= 1) continue;
+        await tick();
         const r = at(f);
         if (r.z > best.z) best = { ...r, scale: f };
       }
@@ -107,13 +114,19 @@
     const base = canvasOf(src), out = [];
     for (const a of ATTACKS) {
       const c = await a.run(base);
-      const r = detectWithScale(c, nodes, N);
-      const row = { name: a.name, expect: a.expect, z: r.z, psr: r.psr, found: r.found, scale: r.scale, size: c.width + '×' + c.height };
+      await tick();
+      const r = await detectWithScale(c, nodes, N);
+      // 縮圖:只寫尺寸看不出「被摧殘成什麼樣」,而那正是這張表要讓人看見的東西
+      const tw = 108, th = Math.max(1, Math.round(c.height * tw / c.width));
+      const tc = F.mkCanvas(tw, th); const tx = F.ctxOf(tc);
+      tx.imageSmoothingEnabled = true; tx.drawImage(c, 0, 0, tw, th);
+      const row = { name: a.name, expect: a.expect, z: r.z, psr: r.psr, found: r.found, scale: r.scale,
+                    size: c.width + '×' + c.height, thumb: tc.toDataURL('image/jpeg', 0.8) };
       out.push(row);
       if (onStep) onStep(row, out.length, ATTACKS.length);
     }
     return out;
   }
 
-  root.IWL_DETECT = { detectWithScale, survive, ATTACKS, resize, crop, rotate, jpeg, canvasOf, dataOf };
+  root.IWL_DETECT = { detectWithScale, survive, tick, ATTACKS, resize, crop, rotate, jpeg, canvasOf, dataOf };
 })(window);

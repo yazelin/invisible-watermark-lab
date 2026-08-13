@@ -115,7 +115,7 @@
       F.ctxOf(c).drawImage(src, 0, 0, c.width, c.height);
     }
     setSplit(50);
-    for (const b of ['btnDownload', 'btnVerify', 'btnForge', 'btnSurvive', 'btnRestore']) $(b).disabled = false;
+    for (const b of ['btnDownload', 'btnVerify', 'btnSurvive', 'btnRestore']) $(b).disabled = false;
     $('stampHint').textContent = '蓋好了。拉下面的滑桿比對,然後往下捲到步驟 4 驗證。';
     const v = $('btnVerify'); v.classList.remove('nextcue'); void v.offsetWidth; v.classList.add('nextcue');
   });
@@ -129,39 +129,44 @@
     }, 'image/png');
   });
 
-  // ── 步驟 4:驗證、偽造、熱圖 ──
-  function drawMap(canvas, map) {
+  // ── 步驟 4:驗證(一次跑兩把金鑰,並排比較) ──
+  /* 兩張熱圖一定要用同一個色階。各自正規化的話,純雜訊也會被拉到滿刻度、
+     看起來像有峰值 —— 那會把「一格獨亮 vs 一片平」這個教學點整個毀掉。 */
+  function drawMap(canvas, map, scaleMax) {
     const cell = 14; canvas.width = canvas.height = N * cell;
     const x = F.ctxOf(canvas);
-    let mx = 0; for (const v of map) mx = Math.max(mx, Math.abs(v));
     for (let j = 0; j < N; j++) for (let i = 0; i < N; i++) {
-      const t = Math.max(0, map[j * N + i]) / (mx || 1);
+      const t = Math.max(0, Math.min(1, map[j * N + i] / (scaleMax || 1)));
       x.fillStyle = `rgb(${Math.round(247 - t * 236)},${Math.round(250 - t * 128)},${Math.round(248 - t * 179)})`;
       x.fillRect(i * cell, j * cell, cell, cell);
     }
   }
-  function show(r, label) {
+  const verdictOf = (el, r, label) => {
+    el.className = 'verdict ' + (r.found ? 'yes' : 'no');
+    el.textContent = (r.found ? '檢出' : '未檢出') + '　（' + label + '）';
+  };
+  $('btnVerify').addEventListener('click', async () => {
+    const b = $('btnVerify'); b.disabled = true; b.textContent = '驗證中…';
+    const mine = await D.detectWithScale(stamped.after, nodes, N, null, true);
+    /* 錯的金鑰不跑尺度搜尋:它在任何倍率下都不會對上,掃 32 個倍率純粹是等待。
+       原本這裡跟正向走同一條路,按下去要卡好幾秒。 */
+    const other = P.nodesFromSecret(K.newSecret(), N);
+    const bad = P.detect(D.dataOf(stamped.after), stamped.W, stamped.H, other, N, { wantMap: true });
+
     $('verifyOut').hidden = false;
-    $('vVerdict').className = 'verdict ' + (r.found ? 'yes' : 'no');
-    $('vVerdict').textContent = (r.found ? '檢出：這張圖蓋過這把金鑰' : '未檢出') + '　（' + label + '）';
-    $('vZ').textContent = r.z.toFixed(1); $('vPsr').textContent = r.psr.toFixed(1);
-    $('zMin').textContent = r.zMin; $('psrMin').textContent = r.psrMin;
-    $('vDetail').textContent = (r.scale && r.scale !== 1 ? '尺度搜尋還原倍率 ×' + r.scale.toFixed(2) + '。' : '')
-      + (r.found ? '對上的位移是 (' + r.shift.join(', ') + ')。' : 'z 或 PSR 其中一項沒過關,沒有任何位置對得起來。');
-  }
-  $('btnVerify').addEventListener('click', () => {
-    const r = D.detectWithScale(stamped.after, nodes, N, null, true);
-    show(r, '用我的金鑰');
-    if (r.map) drawMap($('cMapGood'), r.map);
-    const other = P.nodesFromSecret(K.newSecret(), N);
-    const b = P.detect(D.dataOf(stamped.after), stamped.W, stamped.H, other, N, { wantMap: true });
-    if (b.map) drawMap($('cMapBad'), b.map);
-  });
-  $('btnForge').addEventListener('click', () => {
-    const other = P.nodesFromSecret(K.newSecret(), N);
-    const r = D.detectWithScale(stamped.after, other, N, null, true);
-    show(r, '拿別人的金鑰');
-    if (r.map) drawMap($('cMapBad'), r.map);
+    verdictOf($('vVerdict'), mine, '你的金鑰');
+    verdictOf($('fVerdict'), bad, '別人的金鑰');
+    // 每個數字自己標過關與否,人才看得出「為什麼」判成這樣,而不是只看到一個結論
+    const num = (id, v, min) => { const el = $(id); el.textContent = v.toFixed(1); el.className = v > min ? 'pass' : 'fail'; };
+    num('vZ', mine.z, mine.zMin); num('vPsr', mine.psr, mine.psrMin);
+    num('fZ', bad.z, bad.zMin); num('fPsr', bad.psr, bad.psrMin);
+    $('zMin').textContent = mine.zMin; $('psrMin').textContent = mine.psrMin;
+    $('vDetail').textContent = (mine.scale && mine.scale !== 1 ? '尺度搜尋還原倍率 ×' + mine.scale.toFixed(2) + '。' : '')
+      + (mine.found ? '對上的位移是 (' + mine.shift.join(', ') + ')。' : 'z 或 PSR 沒過關。');
+    const top = Math.max(1e-9, mine.map ? Math.max(...mine.map) : 1);
+    if (mine.map) drawMap($('cMapGood'), mine.map, top);
+    if (bad.map) drawMap($('cMapBad'), bad.map, top); // 同一個色階
+    b.disabled = false; b.textContent = '驗證';
   });
 
   // ── 步驟 5:還原 ──
@@ -187,11 +192,12 @@
     const btn = $('btnSurvive'); btn.disabled = true;
     $('survTable').hidden = false; $('survBody').innerHTML = '';
     await D.survive(stamped.after, nodes, N, (row, i, total) => {
-      $('survProg').textContent = i + ' / ' + total;
+      $('survProg').textContent = i + ' / ' + total + '　' + row.name;
       const tr = document.createElement('tr');
       const surprise = row.found !== row.expect; // 跟預期不符才是新資訊
       if (surprise) tr.className = 'surprise';
-      tr.innerHTML = `<td>${row.name}</td><td class="hint">${row.size}</td><td class="num">${row.z.toFixed(1)}</td>`
+      tr.innerHTML = `<td><img class="thumb" src="${row.thumb}" alt=""></td>`
+        + `<td>${row.name}<br><span class="hint">${row.size}</span></td><td class="num">${row.z.toFixed(1)}</td>`
         + `<td class="num">${(row.psr || 0).toFixed(1)}</td>`
         + `<td class="${row.found ? 'ok' : 'dead'}">${row.found ? '活著' : '死了'}</td>`
         + `<td class="hint">${row.expect ? '應該活' : '應該死'}${surprise ? '（不符）' : ''}</td>`;

@@ -219,8 +219,13 @@
   /* 偵測:積分圖 → 每個(相位, 平移)候選跟模板做匹配濾波 → t 統計量 → 取極值當 z。
      回 { found, z, phase, shift }。 */
   function detect(data, W, H, nodes, N, opts) {
-    const wantMap = !!(opts && opts.wantMap); // 要不要順便回傳「每個位移的分數」熱圖(教學用)
-    let mapBest = -Infinity, map = null;
+    /* 熱圖(教學用):回傳「最佳相位」那一輪、每個位移各自的分數。
+       原本只記相位 (0,0),但最高分不一定出現在那個相位,於是拿來當色階基準的
+       最大值不是真正的峰值 —— 兩張圖並排時,錯的金鑰那張會被相對放大成「好像也有峰值」。 */
+    const wantMap = !!(opts && opts.wantMap);
+    let map = null, mapMax = -Infinity, mapFlat = false;
+    const phaseMap = wantMap ? new Float64Array(N * N) : null;      // 一般格那組
+    const phaseMapF = wantMap ? new Float64Array(N * N) : null;     // 平坦格那組
     const { Ehp } = template(nodes, N);
     const S = W + 1;
     const lumI = new Float64Array(S * (H + 1)); // B−(R+G)/2:場只藏在藍通道,這個差值把亮度甩掉
@@ -300,9 +305,25 @@
         if (e2 > 0) {
           const t = s / (sdHp * Math.sqrt(e2)); stats.push(t);
           if (t > best.z) best = { z: t, phase: [px, py], shift: [sx, sy] };
-          if (wantMap) { if (!map) map = new Float64Array(N * N); if (px === 0 && py === 0) map[sy * N + sx] = t; }
+          if (wantMap) phaseMap[sy * N + sx] = t;
         }
-        if (useFlat && e2F > 0) { const t = sF / (sdF * Math.sqrt(e2F)); stats.push(t); if (t > best.z) best = { z: t, phase: [px, py], shift: [sx, sy] }; }
+        if (useFlat && e2F > 0) {
+          const t = sF / (sdF * Math.sqrt(e2F)); stats.push(t);
+          if (t > best.z) best = { z: t, phase: [px, py], shift: [sx, sy], flat: true };
+          if (wantMap) phaseMapF[sy * N + sx] = t;
+        }
+      }
+      /* 熱圖要畫「產生判定的那一組統計量」。偵測其實有兩組(一般格、平坦格),
+         白底或淡色的圖多半是平坦格那組勝出。原本只畫一般格那組,結果左圖的峰值
+         不是真正的峰值,拿它當色階基準會讓右圖被相對放大成「好像也有峰值」。 */
+      if (wantMap) {
+        for (const [pm0, isFlat] of [[phaseMap, false], [phaseMapF, true]]) {
+          if (isFlat && !useFlat) continue;
+          let pm = -Infinity;
+          for (let k = 0; k < pm0.length; k++) if (pm0[k] > pm) pm = pm0[k];
+          if (pm > mapMax) { mapMax = pm; map = Float64Array.from(pm0); mapFlat = isFlat; }
+        }
+        phaseMapF.fill(0);
       }
     }
     if (!stats.length) return { found: false, z: 0, psr: 0, phase: null, shift: null };
@@ -321,7 +342,7 @@
     // 統計量(一般格與平坦格),平坦格那組的 σ 有下限保護,用均值/標準差會被拉歪
     const sd = Math.max(1e-9, dev[dev.length >> 1] * 1.4826);
     const psr = (best.z - med) / sd;
-    return { found: best.z > Z_MIN && psr > PSR_MIN, z: best.z, psr, zMin: Z_MIN, psrMin: PSR_MIN, phase: best.phase, shift: best.shift, map };
+    return { found: best.z > Z_MIN && psr > PSR_MIN, z: best.z, psr, zMin: Z_MIN, psrMin: PSR_MIN, phase: best.phase, shift: best.shift, map, mapFlat };
   }
 
   root.IWL = { NODE_PX, AMP, Z_MIN, PSR_MIN, thresholdFor, unembed, nodesFromSecret, secretFromBytes, isSecret, rngFrom, nodesFromGray, whiten, nodeStrength, nodeAt, embed, template, detect };

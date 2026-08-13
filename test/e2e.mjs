@@ -78,8 +78,10 @@ try {
   ok('蓋章結果有顯示', stamp.stampShown);
 
   console.log('\n步驟 4:驗證(正向)');
-  const pos = await run(`(() => {
+  const pos = await run(`(async () => {
     document.getElementById('btnVerify').click();
+    await new Promise((r) => { const t = setInterval(() => {
+      if (!document.getElementById('btnVerify').disabled && document.getElementById('vVerdict').textContent) { clearInterval(t); r(); } }, 200); });
     return { txt: document.getElementById('vVerdict').textContent,
              z: parseFloat(document.getElementById('vZ').textContent),
              psr: parseFloat(document.getElementById('vPsr').textContent) };
@@ -88,10 +90,9 @@ try {
 
   console.log('\n步驟 4:偽造(負控制,這條最重要)');
   const neg = await run(`(() => {
-    document.getElementById('btnForge').click();
-    return { txt: document.getElementById('vVerdict').textContent,
-             z: parseFloat(document.getElementById('vZ').textContent),
-             psr: parseFloat(document.getElementById('vPsr').textContent) };
+    return { txt: document.getElementById('fVerdict').textContent,
+             z: parseFloat(document.getElementById('fZ').textContent),
+             psr: parseFloat(document.getElementById('fPsr').textContent) };
   })()`);
   ok('拿別人的金鑰 → 未檢出', /^未檢出/.test(neg.txt), 'z=' + neg.z + ' psr=' + neg.psr);
   ok('偽造的 PSR 明顯低於真的(這才是判準)', neg.psr < pos.psr / 2, neg.psr + ' vs ' + pos.psr);
@@ -113,7 +114,8 @@ try {
       if (!document.getElementById('btnSurvive').disabled) { clearInterval(t); r(); } }, 200); });
     return [...document.querySelectorAll('#survBody tr')].map((tr) => {
       const td = tr.querySelectorAll('td');
-      return { name: td[0].textContent, size: td[1].textContent, z: parseFloat(td[2].textContent),
+      return { name: td[1].textContent.split('\n')[0].trim(), size: (td[1].querySelector('span') || {}).textContent || '',
+               z: parseFloat(td[2].textContent),
                psr: parseFloat(td[3].textContent),
                found: td[4].textContent === '活著', expect: td[5].textContent.startsWith('應該活') };
     });
