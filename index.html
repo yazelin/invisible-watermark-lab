@@ -4,7 +4,7 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>隱形浮水印實驗室 — 蓋一個看不見的印，然後自己把它驗出來、自己把它弄壞</title>
-<meta name="description" content="產生一把金鑰，蓋在你的作品上，肉眼看不出差別。然後驗給自己看、試著偽造、把它摧殘一輪。整套演算法邊玩邊看懂，全在你的瀏覽器裡跑。">
+<meta name="description" content="產生一把金鑰，蓋在作品上，肉眼看不出差別。然後驗給自己看、試著偽造、把它摧殘一輪。整套演算法邊玩邊看懂，全在你的瀏覽器裡跑。">
 <style>
   :root{
     --ink:#16211c; --muted:#5f7168; --line:#dfe8e2; --bg:#f7faf8; --card:#fff;
@@ -105,30 +105,30 @@ table.calc tr.res td{background:#eef4f0;}
 
 <header>
   <h1>隱形浮水印實驗室</h1>
-  <p class="lede">產生一把金鑰，蓋在你的作品上——肉眼看不出任何差別。然後驗給自己看、<strong>試著用別人的金鑰偽造</strong>、把圖摧殘一輪看它什麼時候會死。
-  每一步的中間產物都畫出來，沒有黑箱。<strong>所有運算都在你的瀏覽器裡，圖片和金鑰都不會離開你的電腦。</strong></p>
+  <p class="lede">產生一把金鑰，蓋在我們的作品上——肉眼看不出任何差別。然後驗給自己看、<strong>試著用別人的金鑰偽造</strong>、把圖摧殘一輪看它什麼時候會死。
+  每一步的中間產物都畫出來，沒有黑箱。<strong>所有運算都在瀏覽器裡跑，圖片和金鑰不會離開這台電腦。</strong></p>
 </header>
 
-<h2>這一頁會帶你走七步</h2>
-<p>七步裡面<b>只有三步是真的在做事</b>，其餘四步是拆開來給你看的實驗。先講清楚哪些是哪些，你才知道自己現在在幹嘛。</p>
+<h2>這一頁我們會一起走七步</h2>
+<p>七步分兩種：<b>三步會產出東西</b>——金鑰、蓋好的作品、驗證結果；<b>另外四步是實驗</b>，不產出成品，但那才是我們把演算法拆開的地方。先講清楚哪一步是哪一種，才知道自己現在在幹嘛。</p>
 <div class="card">
   <p><b>要做出一張有浮水印的作品：走步驟 1 和 3 就好。</b><br>
-  <a href="#s1">步驟 1</a> 產生一把金鑰（順便下載鑰圖，那是你唯一的憑據，弄丟就證明不了）→
-  <a href="#s3">步驟 3</a> 把作品拖進去、按「蓋上去」、下載蓋好的 PNG。<b>成品到這裡就完成了</b>，中間的步驟 2 只是畫給你看，不用動手。</p>
-  <p><b>要驗證一張圖是不是你的：直接跳到步驟 7。</b><br>
-  <a href="#s7">步驟 7</a> 把那張圖和你的鑰圖丟進去就好。<b>不需要走前面任何一步</b>——圖可以是別人傳給你的，金鑰可以是你半年前存的那張鑰圖。</p>
-  <p><b>其餘四步（2、4、5、6）不做也能用</b>，但做了你會知道它為什麼有效、什麼時候會失效。那才是這一頁存在的理由——不然這就只是一個你不知道能不能信的按鈕。</p>
+  <a href="#s1">步驟 1</a> 產生一把金鑰（順便下載鑰圖，那是我們唯一的憑據，弄丟就證明不了）→
+  <a href="#s3">步驟 3</a> 把作品拖進去、按「蓋上去」、下載蓋好的 PNG。<b>成品到這裡就完成了</b>，中間的步驟 2 不一定要做，它只是把過程畫出來而已。</p>
+  <p><b>要驗證一張圖是不是我們的：直接跳到步驟 7。</b><br>
+  <a href="#s7">步驟 7</a> 把那張圖和我們的鑰圖丟進去就好。<b>不需要走前面任何一步</b>——圖可以是別人傳來的，金鑰可以是半年前存的那張鑰圖。</p>
+  <p><b>其餘四步（2、4、5、6）不做也能用</b>，但做了我們就知道它為什麼有效、什麼時候會失效。那才是這一頁存在的理由——不然這就只是一個我們不知道能不能信的按鈕。</p>
 </div>
 <ol class="toc">
   <li><b class="tg do">實作</b><a href="#s1">先有一把金鑰</a>——產生金鑰、下載鑰圖存好</li>
   <li><b class="tg lab">實驗</b><a href="#s2">金鑰長成什麼樣的「場」</a>——看那段字串怎麼變成一張鋪滿整張圖的圖樣</li>
   <li><b class="tg do">實作</b><a href="#s3">蓋到作品上</a>——蓋完下載，<b>有浮水印的作品就做好了</b></li>
-  <li><b class="tg lab">實驗</b><a href="#s4">驗給自己看，然後試著偽造</a>——同時用你的金鑰和別人的金鑰各驗一次，看差在哪</li>
+  <li><b class="tg lab">實驗</b><a href="#s4">驗給自己看，然後試著偽造</a>——同時用我們的金鑰和別人的金鑰各驗一次，看差在哪</li>
   <li><b class="tg lab">實驗</b><a href="#s5">還原：證明它是可逆的</a>——把蓋上去的東西精確減回去</li>
   <li><b class="tg lab">實驗</b><a href="#s6">自己把它弄壞</a>——裁切、縮小、重新壓縮，看它什麼時候會死</li>
   <li><b class="tg do">實作</b><a href="#s7">拿一張圖來驗</a>——<b>真正要驗證的時候，就只用這一步</b></li>
 </ol>
-<p class="hint">所有運算都在你的瀏覽器裡跑，圖片和金鑰都不會離開你的電腦。</p>
+<p class="hint">所有運算都在瀏覽器裡跑，圖片和金鑰不會離開這台電腦。</p>
 
 <h2 id="rel">這頁跟「LINE 對話製造機」的關係</h2>
 <p>這個實驗室是從<a href="https://yazelin.github.io/line-chat-maker/">LINE 對話製造機</a>長出來的。那個工具會在匯出的每張圖和每支影片上烙一個隱形標記，
@@ -145,7 +145,7 @@ table.calc tr.res td{background:#eef4f0;}
 <table>
   <tr><th>不一樣的地方</th><th>LINE 對話製造機</th><th>這一頁</th></tr>
   <tr><td><b>回答的問題</b></td><td>這張圖是不是這個工具做的</td><td>這張圖是不是<b>我</b>蓋的</td></tr>
-  <tr><td><b>圖樣哪裡來</b></td><td>一個固定的公開函式，8×8 個節點</td><td>你的金鑰算出來的，16×16 個節點</td></tr>
+  <tr><td><b>圖樣哪裡來</b></td><td>一個固定的公開函式，8×8 個節點</td><td>我們的金鑰算出來的，16×16 個節點</td></tr>
   <tr><td><b>誰能驗</b></td><td>任何人——這正是目的</td><td>只有握有金鑰的人</td></tr>
   <tr><td><b>怎麼判定</b></td><td>只看一個數字 z<br><span class="hint">「訊號有多強」</span></td>
     <td>z 和峰值旁瓣比，兩個都要過<br><span class="hint">再加問「那個最高分有沒有明顯贏過其他位置」，<a href="#s4">步驟 4</a> 會用數字算一遍</span></td></tr>
@@ -163,26 +163,26 @@ table.calc tr.res td{background:#eef4f0;}
   </table>
   <p class="hint">最後一列是區間，因為每跑一輪都用新的隨機金鑰，數字會浮動；跑過的幾輪落在 16/60 到 25/60 之間，也就是四分之一到三分之一。</p>
   <p>圖樣完全不同、節點數也不同，為什麼會撞上？因為<b>兩張隨機的 ±1 圖樣，總會有一部分格子剛好同號</b>。位移搜尋會試遍所有對齊方式，挑出最巧的那一種——巧到某個程度，加起來的分數就夠大了。
-  這正是 z 這個數字管不住的事：<b>你蓋得越用力，連撞出來的最高分也越大</b>。</p>
+  這正是 z 這個數字管不住的事：<b>蓋得越用力，連撞出來的最高分也越大</b>。</p>
   <p>峰值旁瓣比擋得住它：同一批圖，製造機自己蓋的最低是 7.1，這一頁蓋的最高只有 4.4，中間隔得開。<b>差別不在分數多高，在那個最高分有沒有明顯贏過其他位置。</b></p>
   <p><b>所以正確的說法是：製造機不是免疫，是沒人去撞它。</b>而這一頁現在正好會生產這種圖。它的標記本來就只是「提高濫用成本」而不是防偽，這個結果不影響它的用途——但把「不會誤判」講成「不可能誤判」，就是我原本要犯的錯。</p>
 </div>
-<p class="hint">兩邊都在做的事情是一樣的，只是問題不同——所以你在這頁玩懂的每一件事，回頭看那個工具的驗證頁就全部通了。</p>
+<p class="hint">兩邊都在做的事情是一樣的，只是問題不同——所以在這頁玩懂的每一件事，回頭看那個工具的驗證頁就全部通了。</p>
 
-<h2>先搞清楚你要哪一種浮水印</h2>
+<h2>先搞清楚我們要的是哪一種浮水印</h2>
 <table>
   <tr><th>題目</th><th>需求</th><th>代表</th></tr>
   <tr><td><b>洩漏溯源</b></td><td>圖裡要載得動 ID，才知道是誰外流的</td><td>invisible-watermark（dwtDct）、RivaGAN</td></tr>
   <tr><td><b>歸屬證明</b></td><td>只要回答「這是不是我的」，一個位元就夠</td><td><b>本頁</b></td></tr>
 </table>
-<p>因為只需要一個位元，我們可以把全部的工程餘裕拿去換抗破壞性：平鋪、暴力搜尋、只看整體相關性。溯源型要精準到每個位元的位置，所以對裁切、縮放特別脆弱。看完你可能會發現該用別的工具，那也是這頁的目的。</p>
+<p>因為只需要一個位元，我們可以把全部的工程餘裕拿去換抗破壞性：平鋪、暴力搜尋、只看整體相關性。溯源型要精準到每個位元的位置，所以對裁切、縮放特別脆弱。看完可能會發現該用別的工具，那也是這頁的目的。</p>
 
 <h2 id="s1"><span class="step">1</span>先有一把金鑰</h2>
 <p>金鑰是一段隨機字串，不是圖。它決定浮水印長什麼樣子，<strong>而且只有握有它的人能蓋、能驗</strong>。</p>
-<p><b>這一步一定要做完的事：按「產生一把新金鑰」，然後把鑰圖下載存好。</b>那張鑰圖是你唯一的憑據——我們沒有伺服器、沒有備份、沒有「忘記密碼」。</p>
+<p><b>這一步一定要做完的事：按「產生一把新金鑰」，然後把鑰圖下載存好。</b>那張鑰圖是我們唯一的憑據——我們沒有伺服器、沒有備份、沒有「忘記密碼」。</p>
 <div class="row">
   <button class="primary" id="btnNewKey">產生一把新金鑰</button>
-  <span class="hint">或貼上你已經有的：</span>
+  <span class="hint">或貼上已經有的：</span>
   <input id="inSecret" placeholder="IWL1-XXXXX-XXXXX-XXXXX-XXXXX" style="font-family:var(--mono);padding:.4rem .7rem;border:1px solid var(--line);border-radius:8px;min-width:20rem">
   <button id="btnUseSecret">使用</button>
 </div>
@@ -195,17 +195,17 @@ table.calc tr.res td{background:#eef4f0;}
       <div class="row"><button class="primary" id="btnKeyDl">下載鑰圖</button>
         <button id="btnLogo">加上我的 logo 當標籤</button></div>
       <div class="card danger">
-        <p><b>這張圖就是鑰匙本身。</b>任何看到它的人，都能在別人的作品上蓋出你的浮水印，宣稱那是你做的。</p>
-        <p>警告是烙在像素裡的，不是寫在這個頁面上——說明沒人會看，但圖會跟著圖跑。哪天你不小心把它貼出去，你自己和看到的人都會先讀到那句話。</p>
+        <p><b>這張圖就是鑰匙本身。</b>任何看到它的人，都能在別人的作品上蓋出我們的浮水印，宣稱那是我們做的。</p>
+        <p>警告是烙在像素裡的，不是寫在這個頁面上——說明沒人會看，但圖會跟著圖跑。哪天不小心把它貼出去，我們自己和看到的人都會先讀到那句話。</p>
       </div>
-      <p class="hint">logo 只是標籤，讓你在一資料夾長得一樣的 QR 裡分得出哪張是哪張。<b>它對演算法沒有任何貢獻</b>，這點下面會解釋。</p>
+      <p class="hint">logo 只是標籤，讓我們在一資料夾長得一樣的 QR 裡分得出哪張是哪張。<b>它對演算法沒有任何貢獻</b>，這點下面會解釋。</p>
     </div>
   </div>
 </div>
 
 <h2 id="s2"><span class="step">2</span>金鑰長成什麼樣的「場」</h2>
-<p>把金鑰餵給一個亂數產生器，得到 16×16 個 <code>+1</code> 或 <code>−1</code>。這就是你的指紋。</p>
-<p class="hint">這裡的亂數產生器是<b>確定性</b>的——看起來很亂，但<b>同樣的金鑰永遠得到同樣的結果</b>。不然你今天蓋的圖，明天就驗不出來了。
+<p>把金鑰餵給一個亂數產生器，得到 16×16 個 <code>+1</code> 或 <code>−1</code>。這就是我們的指紋。</p>
+<p class="hint">這裡的亂數產生器是<b>確定性</b>的——看起來很亂，但<b>同樣的金鑰永遠得到同樣的結果</b>。不然今天蓋的圖，明天就驗不出來了。
 代價是換一個字元就完全不同，所以金鑰要一個字不差。</p>
 <div class="grid" id="fieldOut" hidden>
   <figure class="px"><canvas id="cFp"></canvas><figcaption>① <b>指紋</b>：16×16 個 ±1。藍=+1、黃=−1</figcaption></figure>
@@ -214,9 +214,9 @@ table.calc tr.res td{background:#eef4f0;}
   <figure><canvas id="cAmp"></canvas><figcaption>④ <b>真正的振幅</b>：實際只在藍色通道加減 2/255。這張是把它放大 40 倍才看得到的樣子</figcaption></figure>
 </div>
 <div class="card">
-  <p><b>為什麼是隨機的 ±1，而不是你的 logo？</b>這頁的第一版真的是讓人上傳 logo 當金鑰，後來量出兩個補不掉的問題：</p>
+  <p><b>為什麼是隨機的 ±1，而不是我們自己的 logo？</b>這頁的第一版真的是讓人上傳 logo 當金鑰，後來量出兩個補不掉的問題：</p>
   <ul>
-    <li><b>公開的東西不能當金鑰。</b>logo 通常是公開的，任何人拿得到就能蓋出你的浮水印。</li>
+    <li><b>公開的東西不能當金鑰。</b>logo 通常是公開的，任何人拿得到就能蓋出我們的浮水印。</li>
     <li><b>圖片的花紋變化太慢。</b>驗證的第一步會把「慢慢變化的部分」減掉（步驟 4 會用數字算一遍）。logo 縮成指紋之後，相鄰的格子長得差不多，正好就是會被減掉的那種——訊號長在偵測器看不見的地方。</li>
   </ul>
   <p>隨機 ±1 沒有這兩個問題：相鄰兩格互不相干，而且每一格都用滿振幅。這也是 1997 年那篇奠基論文用偽隨機圖樣的原因。</p>
@@ -224,7 +224,7 @@ table.calc tr.res td{background:#eef4f0;}
 </div>
 
 <h2 id="s3"><span class="step">3</span>蓋到作品上</h2>
-<p><b>這一步做完，有浮水印的作品就完成了。</b>把作品拖進來、按「蓋上去」、按「下載蓋好的 PNG」——那張下載下來的圖就是你要拿去用的成品。
+<p><b>這一步做完，有浮水印的作品就完成了。</b>把作品拖進來、按「蓋上去」、按「下載蓋好的 PNG」——那張下載下來的圖就是我們要拿去用的成品。
 後面的步驟 4、5、6 都是拿這張圖做實驗，不影響成品。</p>
 <div class="drop" id="dropArt"><span id="dropTxt">點這裡或拖一張作品進來</span><span class="hint"><br>沒有現成的？<a href="#" id="demoArt">用內建示範圖</a></span></div>
 <div class="picked" id="picked" hidden><canvas id="cPick"></canvas><div><b id="pickName"></b><span class="hint" id="pickSize"></span></div></div>
@@ -233,8 +233,8 @@ table.calc tr.res td{background:#eef4f0;}
 <div id="stampOut" hidden>
   <div class="cmp" id="cmpBox"><canvas id="cAfter"></canvas><div class="top" id="cmpTop"><canvas id="cBefore"></canvas></div></div>
   <input type="range" id="cmpSlider" min="0" max="100" value="50">
-  <p class="hint">拖曳滑桿：左邊原圖、右邊蓋好的。重點就是你應該看不出差別。</p>
-  <figure><canvas id="cDiff"></canvas><figcaption>把兩張的差值放大 <b>20 倍</b>。看不見不代表不存在——你的指紋鋪滿了整張圖。</figcaption></figure>
+  <p class="hint">拖曳滑桿：左邊原圖、右邊蓋好的。重點就是我們應該看不出差別。</p>
+  <figure><canvas id="cDiff"></canvas><figcaption>把兩張的差值放大 <b>20 倍</b>。看不見不代表不存在——我們的指紋鋪滿了整張圖。</figcaption></figure>
 </div>
 <div class="card">
   <p><b>只動藍色通道，每個像素最多加減 2。</b>螢幕上每個像素的紅綠藍各是 0 到 255 的整數，所以「加減 2」是全部範圍的 <b>0.8%</b>。
@@ -247,7 +247,7 @@ table.calc tr.res td{background:#eef4f0;}
 </div>
 
 <h2 id="s4"><span class="step">4</span>驗給自己看，然後試著偽造</h2>
-<p>驗證會給你<b>兩個數字</b>。這一整段用國中數學就能算完，先把它算一遍，等一下看到那兩個數字才有意義。</p>
+<p>驗證會給我們<b>兩個數字</b>。這一整段用國中數學就能算完，先把它算一遍，等一下看到那兩個數字才有意義。</p>
 
 <div class="math">
 <h3>一、先把整張圖算成一堆數字</h3>
@@ -265,10 +265,10 @@ table.calc tr.res td{background:#eef4f0;}
 <p class="hint">這一步的專業名稱叫<b>高通濾波</b>（high-pass filter），意思就是「只放行變化快的部分」。名字聽起來很硬，做的事就是上面那個減法。</p>
 
 <h3>三、對答案：相乘再相加</h3>
-<p>假設整張圖只有四格（真的圖有好幾千格，道理一樣）。扣掉畫面之後量到的數字，跟你的圖樣擺在一起：</p>
+<p>假設整張圖只有四格（真的圖有好幾千格，道理一樣）。扣掉畫面之後量到的數字，跟我們的圖樣擺在一起：</p>
 <table class="calc">
   <tr><th>圖上量到的</th><td>＋3</td><td>−2</td><td>＋4</td><td>−1</td><td class="sum"></td></tr>
-  <tr><th>你的圖樣</th><td>＋1</td><td>−1</td><td>＋1</td><td>−1</td><td class="sum"></td></tr>
+  <tr><th>我們的圖樣</th><td>＋1</td><td>−1</td><td>＋1</td><td>−1</td><td class="sum"></td></tr>
   <tr class="res"><th>逐格相乘</th><td>3</td><td>2</td><td>4</td><td>1</td><td class="sum">加起來 ＝ <b>10</b></td></tr>
 </table>
 <p><b>全部變成正的。</b>因為圖樣說「這格該是正的」，圖上量到的就真的是正的；圖樣說負的，量到的也是負的——負負得正。</p>
@@ -288,7 +288,7 @@ table.calc tr.res td{background:#eef4f0;}
 <p><b>z 的全名是 z 分數（z-score），中文叫標準分數</b>，意思就是「比一般的晃動大幾倍」。門檻設 <span id="zMinInline"></span>，是在說：<b>要比一般的晃動大 6 倍以上，我才相信這不是碰巧。</b></p>
 
 <h3>五、為什麼還要第二個數字——峰值旁瓣比</h3>
-<p>z 有一個管不住的漏洞：<b>你蓋得越用力，連「撞」出來的最高分也會跟著變大。</b>別人拿一把完全不對的金鑰，在 256 個位置裡總會挑到最巧的那一個，剛好有一大半格子同號——分數就上去了。</p>
+<p>z 有一個管不住的漏洞：<b>蓋得越用力，連「撞」出來的最高分也會跟著變大。</b>別人拿一把完全不對的金鑰，在 256 個位置裡總會挑到最巧的那一個，剛好有一大半格子同號——分數就上去了。</p>
 <p>所以要再問一句：<b>那個最高分，有沒有明顯贏過其他 255 個位置？</b></p>
 <p class="eq">峰值旁瓣比 ＝ (最高分 － 其他位置的平均) ÷ 其他位置晃動的幅度</p>
 <p><b>全名是峰值旁瓣比（peak-to-sidelobe ratio）</b>。「峰值」是最高的那一根，「旁瓣」是旁邊那些沒對齊的。這是雷達判斷「螢幕上那個亮點到底是飛機還是雜訊」用的老方法，不是這頁發明的。</p>
@@ -297,7 +297,7 @@ table.calc tr.res td{background:#eef4f0;}
 
 <p>下面驗完會用兩張熱圖把這件事畫出來——那是這一節最重要的一張圖。</p>
 <div class="row"><button class="primary" id="btnVerify" disabled>驗證</button>
-  <span class="hint">一次跑兩把金鑰：你的，和一把隨機產生的「別人的」。</span></div>
+  <span class="hint">一次跑兩把金鑰：我們的，和一把隨機產生的「別人的」。</span></div>
 <div class="two" id="verifyOut" hidden>
   <div>
     <div class="verdict" id="vVerdict"></div>
@@ -306,7 +306,7 @@ table.calc tr.res td{background:#eef4f0;}
       <div><b id="vPsr"></b><span>PSR：突出多少<br>要 &gt; <span id="psrMin"></span></span></div>
     </div>
     <figure class="px"><canvas id="cMapGood"></canvas>
-      <figcaption><b>你的金鑰</b>：把指紋在 256 個可能的位移上各試一次。<b>只有一格會亮</b>，那就是對齊的位置。</figcaption></figure>
+      <figcaption><b>我們的金鑰</b>：把指紋在 256 個可能的位移上各試一次。<b>只有一格會亮</b>，那就是對齊的位置。</figcaption></figure>
     <p class="hint" id="vDetail"></p>
   </div>
   <div>
@@ -322,18 +322,18 @@ table.calc tr.res td{background:#eef4f0;}
 <div id="scanWrap" hidden>
   <h3>逐格對答案：把指紋滑過 256 個位置</h3>
   <p>驗證做的事就是這個。指紋每滑一格算一次分數，<b>灰色帶子是「沒對上」的分數落在哪個範圍</b>（旁瓣）。
-  你的金鑰會有一根衝出帶外，別人的金鑰整排都埋在帶子裡。</p>
+  我們的金鑰會有一根衝出帶外，別人的金鑰整排都埋在帶子裡。</p>
   <div class="row"><button class="primary" id="btnScan">播放</button>
     <span class="hint" id="scanTxt"></span></div>
   <figure><canvas id="cScan"></canvas>
     <figcaption><b>PSR 量的就是這個落差</b>：最高那一根，比帶子高出幾倍。它跟「那根有多高」無關——
-    你蓋得越用力，所有的分數都會一起變高，帶子也會一起變寬，落差才是不會被強度騙的東西。</figcaption></figure>
+    蓋得越用力，所有的分數都會一起變高，帶子也會一起變寬，落差才是不會被強度騙的東西。</figcaption></figure>
 </div>
 <div class="card">
   <p><b>兩種「誤判」的破口不一樣，而且剛好相反</b>——這就是為什麼上面那兩個數字缺一不可：</p>
   <ul>
     <li><b>乾淨的圖</b>（根本沒蓋過）：峰值絕對值極低，但它的分數分布很窄，所以 PSR 反而會衝高。</li>
-    <li><b>別人的金鑰</b>：z 可以很高，因為 z 會跟著嵌入強度一起放大——你蓋得越用力，別人隨便一把金鑰撞出來的最高分也越高。但那個峰值並不突出。</li>
+    <li><b>別人的金鑰</b>：z 可以很高，因為 z 會跟著嵌入強度一起放大——蓋得越用力，別人隨便一把金鑰撞出來的最高分也越高。但那個峰值並不突出。</li>
   </ul>
   <p>只看其中一個，都會被另一種騙過去。兩個都要求，就都擋掉了。這是實測逼出來的：一開始只用 z、門檻照舊版設 7，第一次跑負控制就抓到誤判。
   <a href="#rel">上面那張跟 LINE 對話製造機的對照表</a>就是這件事的實例——那邊只看 z，被這頁蓋出來的圖撞中了三分之一。</p>
@@ -341,12 +341,12 @@ table.calc tr.res td{background:#eef4f0;}
 
 <details class="v1box" id="v1box">
 <summary>附錄：第一版是拿 logo 當金鑰的。為什麼放棄——可以自己動手驗</summary>
-<p>這頁的第一版沒有金鑰字串，是<b>上傳你的 logo，把它壓成 16×16 的指紋</b>。聽起來很美：你的浮水印就是你的標誌。當時列了兩個放棄的理由，後來重量一遍，發現<b>其中一個是我講錯的</b>。兩個都放在這裡。</p>
-<p><b>理由一，定義上的，無解。</b>logo 是你到處在用的東西——網站上、名片上、每張作品的角落。<b>公開的東西不能當金鑰</b>。任何人下載你的 logo，就能在別人的作品上蓋出你的浮水印，宣稱那是你做的。這一條改演算法救不回來。</p>
+<p>這頁的第一版沒有金鑰字串，是<b>上傳自己的 logo，把它壓成 16×16 的指紋</b>。聽起來很美：我們的浮水印就是我們的標誌。當時列了兩個放棄的理由，後來重量一遍，發現<b>其中一個是我講錯的</b>。兩個都放在這裡。</p>
+<p><b>理由一，定義上的，無解。</b>logo 是我們到處在用的東西——網站上、名片上、每張作品的角落。<b>公開的東西不能當金鑰</b>。任何人下載我們的 logo，就能在別人的作品上蓋出我們的浮水印，宣稱那是我們做的。這一條改演算法救不回來。</p>
 <p><b>理由二，我原本以為也是致命的，量完發現不是。</b>偵測端第一件事就是高通（減掉四個鄰居的平均），因為畫面內容是低頻的、指紋是格子間交替的高頻。而 logo 也是低頻的——大色塊、平滑漸層，相鄰的格子長得差不多，高通一過能量掉一大半。<b>但這件事有解：白化</b>（把指紋每格振幅重新正規化到偵測端看得見的頻段）。下面這張表就是白化前後的差距。</p>
 <div class="row">
   <button id="btnV1Demo">用內建示範 logo</button>
-  <span class="hint">或拖你自己的 logo 進來，看它掉多少：</span>
+  <span class="hint">或拖自己的 logo 進來，看它掉多少：</span>
 </div>
 <div class="drop" id="dropV1"><span id="v1Txt">點這裡或拖一張 logo 進來</span></div>
 <div class="grid" id="v1Fp" hidden>
@@ -372,7 +372,7 @@ table.calc tr.res td{background:#eef4f0;}
 <div class="row"><button class="primary" id="btnRestore" disabled>把浮水印減回去</button></div>
 <div class="grid" id="restoreGrid" hidden>
   <figure><canvas id="cRd0"></canvas><figcaption><b>蓋好的 − 原圖</b><br><span class="hint" id="rd0"></span></figcaption></figure>
-  <figure><canvas id="cRd1"></canvas><figcaption><b>用你的金鑰還原 − 原圖</b><br><span class="hint" id="rd1"></span></figcaption></figure>
+  <figure><canvas id="cRd1"></canvas><figcaption><b>用我們的金鑰還原 − 原圖</b><br><span class="hint" id="rd1"></span></figcaption></figure>
   <figure><canvas id="cRd2"></canvas><figcaption><b>用別人的金鑰硬減 − 原圖</b><br><span class="hint" id="rd2"></span></figcaption></figure>
 </div>
 <p class="hint" id="restoreOut" hidden></p>
@@ -382,7 +382,7 @@ table.calc tr.res td{background:#eef4f0;}
 </div>
 
 <h2 id="s6"><span class="step">6</span>自己把它弄壞</h2>
-<p><b>用的就是你上面剛蓋好的那張圖</b>，不是另外準備的範例。把它摧殘一輪再各驗一次。<b>這張表同時證明「它真的活得下來」和「它有明確的極限」</b>，比任何文案都可信。</p>
+<p><b>用的就是我們上面剛蓋好的那張圖</b>，不是另外準備的範例。把它摧殘一輪再各驗一次。<b>這張表同時證明「它真的活得下來」和「它有明確的極限」</b>，比任何文案都可信。</p>
 <p class="hint"><b>表裡有兩把梯子，對照著看。</b>純裁切 90→75→60→50→30，裁完再縮一半 90→75→60→50。
 純裁切的斷點在 <b>75% 與 60% 之間</b>；裁完再縮一半的斷點在 <b>60% 與 50% 之間</b>——
 也就是說<b>多做一道縮小，反而更耐用</b>。縮小再放大等於過了一次低通濾波，把畫面的高頻雜訊壓掉、留下平滑的場紋。
@@ -395,15 +395,15 @@ table.calc tr.res td{background:#eef4f0;}
 </table>
 
 <h2 id="s7"><span class="step">7</span>拿一張圖來驗（實際會用到的就是這一步）</h2>
-<p><b>這是實際要驗證時唯一會用到的一步</b>，前面那些都不必走。情境是這樣：作品流出去了，你拿回一張圖、配上你當初存的鑰圖，問它「這是不是我的」。
-兩邊都不需要是這個分頁產生的——圖可以是別人傳給你的，金鑰可以是你半年前下載的那張鑰圖。</p>
+<p><b>這是實際要驗證時唯一會用到的一步</b>，前面那些都不必走。情境是這樣：作品流出去了，我們拿回一張圖、配上當初存的鑰圖，問它「這是不是我的」。
+兩邊都不需要是這個分頁產生的——圖可以是別人傳來的，金鑰可以是半年前下載的那張鑰圖。</p>
 <div class="two">
   <div>
     <div class="drop" id="dropCheckImg"><span id="ckImgTxt">要驗的圖</span><span class="hint"><br>點這裡或拖進來</span></div>
     <figure id="ckImgFig" hidden><canvas id="cCkImg"></canvas><figcaption class="hint" id="ckImgInfo"></figcaption></figure>
   </div>
   <div>
-    <div class="drop" id="dropCheckKey"><span id="ckKeyTxt">你的鑰圖</span><span class="hint"><br>拖鑰圖進來，會自動讀出金鑰</span></div>
+    <div class="drop" id="dropCheckKey"><span id="ckKeyTxt">我們的鑰圖</span><span class="hint"><br>拖鑰圖進來，會自動讀出金鑰</span></div>
     <div class="row"><input id="ckSecret" placeholder="或直接貼上 IWL1-…" style="font-family:var(--mono);padding:.4rem .7rem;border:1px solid var(--line);border-radius:8px;flex:1;min-width:12rem"></div>
     <p class="hint" id="ckKeyInfo"></p>
   </div>
@@ -420,15 +420,15 @@ table.calc tr.res td{background:#eef4f0;}
 </div>
 <p class="hint" id="ckRestoreOut" hidden></p>
 <div class="card warn">
-  <p><b>還原只在「原尺寸、沒被轉檔」的圖上有效。</b>被縮過、裁過、存成 JPEG 的圖，格線已經對不回去，減下去只會多加一層雜訊。要拿回乾淨的原圖，用你自己下載的那張 PNG。</p>
-  <p><b>「未檢出」不等於「不是你的」。</b>可能是被裁得太兇、被旋轉過、或那張圖本身雜訊太高蓋不上去。這個工具只能給你一個方向，不能當證據。</p>
+  <p><b>還原只在「原尺寸、沒被轉檔」的圖上有效。</b>被縮過、裁過、存成 JPEG 的圖，格線已經對不回去，減下去只會多加一層雜訊。要拿回乾淨的原圖，用當初自己下載的那張 PNG。</p>
+  <p><b>「未檢出」不等於「不是我們的」。</b>可能是被裁得太兇、被旋轉過、或那張圖本身雜訊太高蓋不上去。這個工具只能指出一個方向，不能當證據。</p>
   <p><b>反過來「檢出」也只證明「這張圖蓋過這把金鑰」</b>，不證明是誰蓋的——金鑰外流的話，別人也能蓋。</p>
 </div>
 
 <h2>誠實的界限</h2>
 <div class="card warn">
   <p><b>開源，所以拔得掉。</b>防的是順手盜用，不是防偽。原始碼就在下面的連結裡。</p>
-  <p><b>金鑰外流就全毀。</b>拿到你金鑰的人可以在任何圖上蓋出你的浮水印，宣稱那是你做的。這是這套機制唯一的信任根。</p>
+  <p><b>金鑰外流就全毀。</b>拿到我們金鑰的人可以在任何圖上蓋出我們的浮水印，宣稱那是我們做的。這是這套機制唯一的信任根。</p>
   <p><b>金鑰弄丟就證明不了。</b>我們沒有伺服器、沒有備份、沒有「忘記密碼」。所以鑰圖裡存了三份。</p>
   <p><b>同一把金鑰蓋很多張圖，理論上可以被反推。</b>指紋固定、內容不相干，蒐集夠多張取平均，內容互相抵消、指紋會浮出來（平均攻擊）。真的在意就一件作品一把金鑰。</p>
   <p><b>高細節、高雜訊的圖蓋不上去。</b>2026-08-13 量到的：一張密集紋理的測試圖連原圖都驗不出來（z=6.1），不是被摧殘弄死的，是 ±2 的訊號從一開始就蓋不過那張圖本身的雜訊底。平滑的插畫、實拍照片、大面積淺色的商品圖都沒問題。</p>
@@ -454,7 +454,7 @@ table.calc tr.res td{background:#eef4f0;}
   <p class="promo"><a href="https://github.com/yazelin/invisible-watermark-lab">原始碼與實測數據</a>
      <a href="https://www.facebook.com/yaze.lin.gm">Facebook</a>
      <a href="https://buymeacoffee.com/yazelin">請我喝咖啡</a></p>
-  <p>MIT 授權 · 林亞澤 · 所有運算都在你的瀏覽器裡，圖片與金鑰都不會離開你的電腦</p>
+  <p>MIT 授權 · 林亞澤 · 所有運算都在瀏覽器裡，圖片與金鑰不會離開這台電腦</p>
 </footer>
 </div>
 
