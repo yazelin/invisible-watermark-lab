@@ -296,7 +296,9 @@
       const surprise = row.found !== row.expect; // 跟預期不符才是新資訊
       if (surprise) tr.className = 'surprise';
       tr.innerHTML = `<td><img class="thumb" src="${row.thumb}" alt=""></td>`
-        + `<td>${row.name}<br><span class="hint">${row.size}</span></td><td class="num">${row.z.toFixed(1)}</td>`
+        + `<td>${row.name}<br><span class="hint">${row.size}</span></td>`
+        + `<td class="num">${row.blocks.toLocaleString()}<br><span class="hint">${row.scale !== 1 ? '還原 ×' + row.scale.toFixed(2) + '　' : ''}磁磚 ${row.tiles.toFixed(1)} 塊</span></td>`
+        + `<td class="num">${row.z.toFixed(1)}</td>`
         + `<td class="num">${(row.psr || 0).toFixed(1)}</td>`
         + `<td class="${row.found ? 'ok' : 'dead'}">${row.found ? '活著' : '死了'}</td>`
         + `<td class="hint">${row.expect ? '應該活' : '應該死'}${surprise ? '（不符）' : ''}</td>`;

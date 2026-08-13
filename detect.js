@@ -96,19 +96,35 @@
        JPEG 50 從 false 改成 true —— 三張都活
        縮到 25% 從死變活 —— 那是搜尋範圍的 bug,不是訊號沒了
 
-     「裁切+縮小」的組合(截圖再上傳的真實路徑)兩項都是 1/4,跟單純裁切一致:
-     大面積淺色那張活,其餘都死。決定命運的是雜訊底,不是被切掉多少。 */
+     2026-08-13 第三輪加了兩把梯子(純裁切 90/75/60/50/30、裁切再縮一半 90/75/60/50),
+     量出一個跟直覺相反、而且推翻原本說法的結果:
+
+       純裁切      90% 活  75% 活  60% 死  50% 死  30% 死   ← 斷點在 75~60 之間
+       裁完再縮一半 90% 活  75% 活  60% 活  50% 死          ← 斷點在 60~50 之間
+
+     「裁到 60%」單獨會死,但「裁到 60% 再縮一半」反而活。多做一道破壞卻活下來,
+     原因是縮小再放大等於過了一次低通濾波:場紋是 16 像素節點的平滑訊號,重新取樣
+     殺不掉;畫面內容的高頻雜訊卻被平均掉了,訊噪比因此變好。
+     所以「縮放是可還原的」只講對一半 —— 它不只不丟資訊,還會幫忙。 */
   const ATTACKS = [
     { name: '原圖(對照)', expect: true, run: async (c) => c },
     { name: 'JPEG 品質 90', expect: true, run: (c) => jpeg(c, 0.9) },
     { name: 'JPEG 品質 80', expect: true, run: (c) => jpeg(c, 0.8) },
     { name: 'JPEG 品質 70', expect: true, run: (c) => jpeg(c, 0.7) },
     { name: 'JPEG 品質 50', expect: true, run: (c) => jpeg(c, 0.5) },
+    { name: '裁到剩 90%', expect: true, run: async (c) => crop(c, 0.9) },
+    { name: '裁到剩 75%', expect: true, run: async (c) => crop(c, 0.75) },
+    { name: '裁到剩 60%', expect: false, run: async (c) => crop(c, 0.6) },
     { name: '裁掉一半(保留 50%)', expect: false, run: async (c) => crop(c, 0.5) },
     { name: '裁到剩 30%', expect: false, run: async (c) => crop(c, 0.3) },
     { name: '縮到 50%', expect: true, run: async (c) => resize(c, 0.5) },
     { name: '縮到 25%', expect: true, run: async (c) => resize(c, 0.25) },
     { name: '縮到 15%', expect: false, run: async (c) => resize(c, 0.15) },
+    /* 裁切+縮小的梯子。跟上面純裁切的梯子對照著看:如果縮放真的可以被還原,
+       那「裁 75% 再縮一半」就該跟「裁 75%」表現一樣 —— 兩把梯子擺在一起就是實驗。 */
+    { name: '裁 90% 再縮一半', expect: true, run: async (c) => resize(crop(c, 0.9), 0.5) },
+    { name: '裁 75% 再縮一半', expect: true, run: async (c) => resize(crop(c, 0.75), 0.5) },
+    { name: '裁 60% 再縮一半', expect: true, run: async (c) => resize(crop(c, 0.6), 0.5) },
     { name: '裁一半再縮一半', expect: false, run: async (c) => resize(crop(c, 0.5), 0.5) },
     { name: '裁到 30% 再縮到 40%', expect: false, run: async (c) => resize(crop(c, 0.3), 0.4) },
     { name: '模擬社群上傳(縮到 1080 寬 + JPEG 80)', expect: true, run: (c) => jpeg(resize(c, Math.min(1, 1080 / c.width)), 0.8) },
@@ -131,8 +147,16 @@
       const k = BW / base.width, dw = Math.max(1, c.width * k), dh = Math.max(1, c.height * k);
       tx.imageSmoothingEnabled = true; tx.imageSmoothingQuality = 'high';
       tx.drawImage(c, (BW - dw) / 2, (BH - dh) / 2, dw, dh);
-      const row = { name: a.name, expect: a.expect, z: r.z, psr: r.psr, found: r.found, scale: r.scale,
-                    size: c.width + '×' + c.height, thumb: tc.toDataURL('image/jpeg', 0.8) };
+      /* 有效格數:偵測真正拿來做統計的格子有多少。要用「尺度搜尋還原之後」的尺寸算,
+         不能用眼前這張圖的尺寸 —— 裁一半和縮到 50% 都是 450×310、都只有 532 格,
+         但一個死一個活。差別在於縮放是可還原的(格數補得回來),裁切是真的把資訊丟掉。
+         這欄就是要讓人看見這件事,順便解釋為什麼極限是格數而不是「被破壞得多嚴重」。 */
+      const sc = r.scale && r.scale !== 1 ? r.scale : 1;
+      const ew = Math.round(c.width * sc), eh = Math.round(c.height * sc);
+      const blocks = Math.floor(ew / 16) * Math.floor(eh / 16);
+      const tiles = (ew / (16 * N)) * (eh / (16 * N));
+      const row = { name: a.name, expect: a.expect, z: r.z, psr: r.psr, found: r.found, scale: sc,
+                    blocks, tiles, size: c.width + '×' + c.height, thumb: tc.toDataURL('image/jpeg', 0.8) };
       out.push(row);
       if (onStep) onStep(row, out.length, ATTACKS.length);
     }

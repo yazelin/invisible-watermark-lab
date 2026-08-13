@@ -111,14 +111,15 @@ try {
     // 量到的是被重採樣過的圖,整張矩陣都不算數。
     document.getElementById('btnSurvive').click();
     await new Promise((r) => { const t = setInterval(() => {
-      if (!document.getElementById('btnSurvive').disabled) { clearInterval(t); r(); } }, 200); });
+      if (!document.getElementById('btnSurvive').disabled && document.querySelectorAll('#survBody tr').length >= 21) { clearInterval(t); r(); } }, 300); });
     return [...document.querySelectorAll('#survBody tr')].map((tr) => {
       const td = tr.querySelectorAll('td');
       return { name: (td[1].firstChild ? td[1].firstChild.textContent : td[1].textContent).trim(),
                size: (td[1].querySelector('span') || {}).textContent || '',
-               z: parseFloat(td[2].textContent),
-               psr: parseFloat(td[3].textContent),
-               found: td[4].textContent === '活著', expect: td[5].textContent.startsWith('應該活') };
+               blocks: td[2].textContent.trim(),
+               z: parseFloat(td[3].textContent),
+               psr: parseFloat(td[4].textContent),
+               found: td[5].textContent === '活著', expect: td[6].textContent.startsWith('應該活') };
     });
   })()`);
   console.log('    ' + '摧殘方式'.padEnd(34) + '尺寸'.padEnd(12) + 'z'.padStart(7) + 'PSR'.padStart(7) + '  結果   預期');
@@ -129,7 +130,7 @@ try {
     console.log('    ' + r.name.padEnd(32) + r.size.padEnd(12) + r.z.toFixed(1).padStart(7) + r.psr.toFixed(1).padStart(7) + '  ' +
       (r.found ? '活著' : '死了') + '   ' + (r.expect ? '應該活' : '應該死') + (s ? '  ← 不符' : ''));
   }
-  ok('存活矩陣跑完 15 項', rows.length === 15);
+  ok('存活矩陣跑完 21 項', rows.length === 21);
   ok('原圖對照活著', rows[0].found, 'z=' + rows[0].z.toFixed(1));
   ok('旋轉 30 度確實死掉(已知限制,不是宣稱)', !rows[rows.length - 1].found);
   console.log('\n  跟預期不符:' + surprises + ' 項' + (surprises ? '(上面標「不符」的,那幾行是新資訊,要回頭改預期或改演算法)' : ''));
