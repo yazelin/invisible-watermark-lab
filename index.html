@@ -95,6 +95,9 @@ table.calc th{text-align:right;font-weight:600;white-space:nowrap;}
 table.calc td{text-align:center;font-family:var(--mono);min-width:3.2rem;}
 table.calc td.sum{text-align:left;font-family:inherit;white-space:nowrap;padding-left:1rem;}
 table.calc tr.res td{background:#eef4f0;}
+.tg{font-size:.72rem;font-weight:700;padding:.1rem .45rem;border-radius:5px;margin-right:.5rem;
+  letter-spacing:.03em;vertical-align:.08em;}
+.tg.do{background:var(--accent);color:#fff;} .tg.lab{background:#e4ebe7;color:#4a6357;}
 </style>
 </head>
 <body>
@@ -107,16 +110,25 @@ table.calc tr.res td{background:#eef4f0;}
 </header>
 
 <h2>這一頁會帶你走七步</h2>
+<p>七步裡面<b>只有三步是真的在做事</b>，其餘四步是拆開來給你看的實驗。先講清楚哪些是哪些，你才知道自己現在在幹嘛。</p>
+<div class="card">
+  <p><b>要做出一張有浮水印的作品：走步驟 1 和 3 就好。</b><br>
+  <a href="#s1">步驟 1</a> 產生一把金鑰（順便下載鑰圖，那是你唯一的憑據，弄丟就證明不了）→
+  <a href="#s3">步驟 3</a> 把作品拖進去、按「蓋上去」、下載蓋好的 PNG。<b>成品到這裡就完成了</b>，中間的步驟 2 只是畫給你看，不用動手。</p>
+  <p><b>要驗證一張圖是不是你的：直接跳到步驟 7。</b><br>
+  <a href="#s7">步驟 7</a> 把那張圖和你的鑰圖丟進去就好。<b>不需要走前面任何一步</b>——圖可以是別人傳給你的，金鑰可以是你半年前存的那張鑰圖。</p>
+  <p><b>其餘四步（2、4、5、6）不做也能用</b>，但做了你會知道它為什麼有效、什麼時候會失效。那才是這一頁存在的理由——不然這就只是一個你不知道能不能信的按鈕。</p>
+</div>
 <ol class="toc">
-  <li><a href="#s1">先有一把金鑰</a>——一段隨機字串，只有你有</li>
-  <li><a href="#s2">金鑰長成什麼樣的「場」</a>——把字串變成一張看得見的圖樣</li>
-  <li><a href="#s3">蓋到作品上</a>——蓋完你應該看不出差別</li>
-  <li><a href="#s4">驗給自己看，然後試著偽造</a>——同時用你的金鑰和別人的金鑰各驗一次</li>
-  <li><a href="#s5">還原：證明它是可逆的</a>——把蓋上去的東西減回去</li>
-  <li><a href="#s6">自己把它弄壞</a>——裁切、縮小、重存，看它什麼時候會死</li>
-  <li><a href="#s7">拿一張圖來驗</a>——真正要用的時候，就只有這一步</li>
+  <li><b class="tg do">實作</b><a href="#s1">先有一把金鑰</a>——產生金鑰、下載鑰圖存好</li>
+  <li><b class="tg lab">實驗</b><a href="#s2">金鑰長成什麼樣的「場」</a>——看那段字串怎麼變成一張鋪滿整張圖的圖樣</li>
+  <li><b class="tg do">實作</b><a href="#s3">蓋到作品上</a>——蓋完下載，<b>有浮水印的作品就做好了</b></li>
+  <li><b class="tg lab">實驗</b><a href="#s4">驗給自己看，然後試著偽造</a>——同時用你的金鑰和別人的金鑰各驗一次，看差在哪</li>
+  <li><b class="tg lab">實驗</b><a href="#s5">還原：證明它是可逆的</a>——把蓋上去的東西精確減回去</li>
+  <li><b class="tg lab">實驗</b><a href="#s6">自己把它弄壞</a>——裁切、縮小、重新壓縮，看它什麼時候會死</li>
+  <li><b class="tg do">實作</b><a href="#s7">拿一張圖來驗</a>——<b>真正要驗證的時候，就只用這一步</b></li>
 </ol>
-<p class="hint">前六步是為了讓你看懂它怎麼運作，第七步才是實際會用到的。每一步都可以自己動手，沒有東西會離開你的電腦。</p>
+<p class="hint">所有運算都在你的瀏覽器裡跑，圖片和金鑰都不會離開你的電腦。</p>
 
 <h2 id="rel">這頁跟「LINE 對話製造機」的關係</h2>
 <p>這個實驗室是從<a href="https://yazelin.github.io/line-chat-maker/">LINE 對話製造機</a>長出來的。那個工具會在匯出的每張圖和每支影片上烙一個隱形標記，
@@ -167,6 +179,7 @@ table.calc tr.res td{background:#eef4f0;}
 
 <h2 id="s1"><span class="step">1</span>先有一把金鑰</h2>
 <p>金鑰是一段隨機字串，不是圖。它決定浮水印長什麼樣子，<strong>而且只有握有它的人能蓋、能驗</strong>。</p>
+<p><b>這一步一定要做完的事：按「產生一把新金鑰」，然後把鑰圖下載存好。</b>那張鑰圖是你唯一的憑據——我們沒有伺服器、沒有備份、沒有「忘記密碼」。</p>
 <div class="row">
   <button class="primary" id="btnNewKey">產生一把新金鑰</button>
   <span class="hint">或貼上你已經有的：</span>
@@ -211,6 +224,8 @@ table.calc tr.res td{background:#eef4f0;}
 </div>
 
 <h2 id="s3"><span class="step">3</span>蓋到作品上</h2>
+<p><b>這一步做完，有浮水印的作品就完成了。</b>把作品拖進來、按「蓋上去」、按「下載蓋好的 PNG」——那張下載下來的圖就是你要拿去用的成品。
+後面的步驟 4、5、6 都是拿這張圖做實驗，不影響成品。</p>
 <div class="drop" id="dropArt"><span id="dropTxt">點這裡或拖一張作品進來</span><span class="hint"><br>沒有現成的？<a href="#" id="demoArt">用內建示範圖</a></span></div>
 <div class="picked" id="picked" hidden><canvas id="cPick"></canvas><div><b id="pickName"></b><span class="hint" id="pickSize"></span></div></div>
 <div class="row"><button class="primary" id="btnStamp" disabled>蓋上去</button><button id="btnDownload" disabled>下載蓋好的 PNG</button>
@@ -380,7 +395,7 @@ table.calc tr.res td{background:#eef4f0;}
 </table>
 
 <h2 id="s7"><span class="step">7</span>拿一張圖來驗（實際會用到的就是這一步）</h2>
-<p>前面六步是為了讓你看懂它怎麼運作。<b>真正要用的時候是這樣</b>：作品流出去了，你拿回一張圖、配上你當初存的鑰圖，問它「這是不是我的」。
+<p><b>這是實際要驗證時唯一會用到的一步</b>，前面那些都不必走。情境是這樣：作品流出去了，你拿回一張圖、配上你當初存的鑰圖，問它「這是不是我的」。
 兩邊都不需要是這個分頁產生的——圖可以是別人傳給你的，金鑰可以是你半年前下載的那張鑰圖。</p>
 <div class="two">
   <div>
