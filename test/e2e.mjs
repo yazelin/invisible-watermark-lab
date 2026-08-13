@@ -11,7 +11,7 @@ import { join, resolve } from 'node:path';
 import assert from 'node:assert';
 
 const CHROME = process.env.CHROME || 'google-chrome';
-const PAGE = 'file://' + resolve(import.meta.dirname, '..', 'index.html');
+const PAGE = process.env.PAGE || ('file://' + resolve(import.meta.dirname, '..', 'index.html'));
 
 async function openChrome() {
   const dir = mkdtempSync(join(tmpdir(), 'iwl-e2e-'));
