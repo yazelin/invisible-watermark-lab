@@ -6,6 +6,7 @@
   const N = 16;
 
   let secret = null, nodes = null, logoImg = null, artImg = null, stamped = null;
+  $('zMinInline').textContent = P.Z_MIN; // 說明文字裡的門檻跟程式碼同一個來源,不手寫
 
   // ── 步驟 1:金鑰 ──
   function useSecret(s) {
