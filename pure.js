@@ -93,8 +93,8 @@
      v1 的程式碼(nodesFromGray/whiten)保留,頁面拿它當教材:第一版為什麼不夠。 */
 
   // xmur3:字串 → 32 bit 種子。要跨平台位元級一致,所以不用任何內建雜湊
-  function seedFrom(str) {
-    let h = 1779033703 ^ str.length;
+  function seedFrom(str, init) {
+    let h = (init || 1779033703) ^ str.length;
     for (let i = 0; i < str.length; i++) {
       h = Math.imul(h ^ str.charCodeAt(i), 3432918353);
       h = (h << 13) | (h >>> 19);
@@ -105,10 +105,21 @@
       return (h ^= h >>> 16) >>> 0;
     };
   }
-  // sfc32:小、快、夠亂。這裡不需要密碼學等級的 PRNG,secret 本身才是祕密
+  /* sfc32:小、快、夠亂。這裡不需要密碼學等級的 PRNG,secret 本身才是祕密。
+
+     第五次做壞的地方:原本是 `const s = seedFrom(secret); let a=s(),b=s(),c=s(),d=s();`
+     —— 四個值看起來有 128 bit,其實全部由 seedFrom 那一個 32 bit 的狀態推出來,
+     所以不管 secret 有 100 bit,指紋最多只有 2^32 種。實測 30 萬把金鑰撞出 8 組
+     完全相同的指紋(2^32 的理論期望值是 10.5 組)。
+     修法:跑四次獨立的雜湊,每一次都吃過完整的 secret,四個起始常數不同。
+     IWL1 走舊路徑,不然之前蓋過的圖會突然驗不出來;新金鑰一律發 IWL2。 */
+  const SEED_INIT = [1779033703, 3144134277, 1013904242, 2773480762]; // SHA-256 的前四個初始常數
   function rngFrom(secret) {
-    const s = seedFrom(secret);
-    let a = s(), b = s(), c = s(), d = s();
+    const str = String(secret);
+    let a, b, c, d;
+    if (/^IWL1-/i.test(str)) { const s = seedFrom(str); a = s(); b = s(); c = s(); d = s(); }
+    else { a = seedFrom(str, SEED_INIT[0])(); b = seedFrom(str, SEED_INIT[1])();
+           c = seedFrom(str, SEED_INIT[2])(); d = seedFrom(str, SEED_INIT[3])(); }
     return () => {
       a >>>= 0; b >>>= 0; c >>>= 0; d >>>= 0;
       let t = (a + b) | 0;
@@ -132,14 +143,15 @@
   }
 
   /* 產生新的 secret。Crockford base32(去掉 I L O U,不會抄錯),100 bit。
+     版號 IWL2:IWL1 的指紋只有 2^32 種(見 rngFrom 的註解),新金鑰走修好的路徑。
      bytes 由呼叫端給(瀏覽器 crypto.getRandomValues / node crypto),pure.js 不碰環境。 */
   const B32 = '0123456789ABCDEFGHJKMNPQRSTVWXYZ';
   function secretFromBytes(bytes) {
     let s = '';
     for (let i = 0; i < 20; i++) s += B32[bytes[i % bytes.length] % 32];
-    return 'IWL1-' + s.slice(0, 5) + '-' + s.slice(5, 10) + '-' + s.slice(10, 15) + '-' + s.slice(15, 20);
+    return 'IWL2-' + s.slice(0, 5) + '-' + s.slice(5, 10) + '-' + s.slice(10, 15) + '-' + s.slice(15, 20);
   }
-  const isSecret = (s) => /^IWL1(-[0-9A-HJKMNP-TV-Z]{5}){4}$/.test(String(s || '').trim().toUpperCase());
+  const isSecret = (s) => /^IWL[12](-[0-9A-HJKMNP-TV-Z]{5}){4}$/.test(String(s || '').trim().toUpperCase());
 
   /* 嵌入:把場加到藍通道。data 是 RGBA(Uint8ClampedArray),就地修改。 */
   function embed(data, W, H, nodes, N) {

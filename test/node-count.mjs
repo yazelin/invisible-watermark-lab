@@ -7,11 +7,11 @@
      正向分數兩者完全一樣 —— 偵測器是環狀折疊的,圖上每個 16 像素格子都會被折進
      N×N 格裡的某一格,不管那塊圖樣有多大。決定強度的是圖有多少格子,不是 N。
 
-     偽造分數 16×16 明顯較低 —— 別人亂猜的金鑰要在 256 格上碰巧同號才撞得到,
+     碰撞分數 16×16 明顯較低 —— 別人亂猜的金鑰要在 256 格上碰巧同號才碰撞得到,
      8×8 只要碰對 64 格。格子越多,運氣要越好。
 
-   所以 16×16 是「抗偽造變好、而且沒量到代價」。對製造機來說 8×8 夠用,因為它的
-   圖樣本來就是公開的,防偽造不在它的目標裡。 */
+   所以換成 16×16 是純賺的:抗碰撞變好,而換之前擔心的兩件事(訊號變弱、更不耐裁切)
+   量完都沒有發生。對製造機來說 8×8 夠用,因為它的圖樣本來就是公開的,防碰撞不在它的目標裡。 */
 import { readFileSync } from 'node:fs';
 import { randomBytes } from 'node:crypto';
 import { resolve } from 'node:path';
@@ -72,12 +72,12 @@ for (const [w, h] of [[640, 480], [320, 240]]) {
       const mine = newKey(N), d = makeImage(KINDS[i % 4], 4000 + i);
       P.embed(d, W, H, mine, N);
       tp.push(P.detect(d, W, H, mine, N).z);
-      fg.push(P.detect(d, W, H, newKey(N), N).z);   // 別人的金鑰來撞
+      fg.push(P.detect(d, W, H, newKey(N), N).z);   // 別人的金鑰來碰撞
       const a = crop(d, 0.75); c75.push(P.detect(a.d, a.w, a.h, mine, N).z);
     }
     out[w + '/' + N] = { tp: st(tp), fg: st(fg), c75: st(c75) };
     console.log('  ' + `${N}×${N} 節點（一塊 ${N * 16}×${N * 16} 像素）`.padEnd(30)
-      + '正向 ' + f(st(tp)) + '　偽造 ' + f(st(fg)) + '　裁到 75% ' + f(st(c75))
+      + '正向 ' + f(st(tp)) + '　碰撞 ' + f(st(fg)) + '　裁到 75% ' + f(st(c75))
       + '　每格平均樣本 ' + (((W >> 4) * (H >> 4)) / (N * N)).toFixed(1));
   }
 }
@@ -87,11 +87,11 @@ const ok = (n, c, x) => { console.log((c ? '  ✓ ' : '  ✗ ') + n + (x ? '  ' 
 console.log('');
 for (const w of [640, 320]) {
   const a = out[w + '/8'], b = out[w + '/16'];
-  ok(w + ' 寬：16×16 比較難偽造', b.fg.max < a.fg.max, a.fg.max.toFixed(1) + ' → ' + b.fg.max.toFixed(1));
+  ok(w + ' 寬：16×16 比較難碰撞', b.fg.max < a.fg.max, a.fg.max.toFixed(1) + ' → ' + b.fg.max.toFixed(1));
   ok(w + ' 寬：正向強度沒有付出代價', Math.abs(b.tp.med - a.tp.med) < 0.5,
     a.tp.med.toFixed(1) + ' vs ' + b.tp.med.toFixed(1));
   ok(w + ' 寬：抗裁切沒有付出代價', b.c75.med > a.c75.med - 0.5,
     a.c75.med.toFixed(1) + ' vs ' + b.c75.med.toFixed(1));
 }
-console.log(bad ? '\n' + bad + ' 項不符' : '\n16×16 是「抗偽造變好、沒量到代價」。');
+console.log(bad ? '\n' + bad + ' 項不符' : '\n換成 16×16 是純賺的:抗碰撞變好,擔心的兩個代價都沒發生。');
 process.exit(bad ? 1 : 0);

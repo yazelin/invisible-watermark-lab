@@ -185,7 +185,8 @@ table.calc tr.res td{background:#eef4f0;}
   所以「一塊 256×256」不等於「要有 256×256 才驗得出來」——決定強度的是<b>整張圖總共有多少格子</b>，跟一塊多大無關。</p>
   <p><b>為什麼碰撞變難？</b>因為別人亂猜的那把金鑰，要在<b>256 格</b>上都碰巧同號才碰撞得到；8×8 只要碰對 <b>64 格</b>。
   格子越多，要碰巧的地方越多，運氣就得越好。</p>
-  <p>所以 16×16 是「抗碰撞變好、而且沒量到代價」。對製造機來說 8×8 夠用——<b>它的圖樣本來就是公開的，防碰撞從來不在它的目標裡</b>，任何人都能蓋才是它要的。</p>
+  <p><b>所以換成 16×16 是純賺的。</b>抗碰撞明顯變好，而換之前擔心的兩件事——訊號會不會變弱、會不會更不耐裁切——量完發現都沒有發生。</p>
+  <p>對製造機來說 8×8 就夠了——<b>它的圖樣本來就是公開的，防碰撞從來不在它的目標裡</b>，任何人都能蓋才是它要的。</p>
 </div>
 <p class="hint">兩邊都在做的事情是一樣的，只是問題不同——所以在這頁玩懂的每一件事，回頭看那個工具的驗證頁就全部通了。</p>
 
@@ -203,30 +204,64 @@ table.calc tr.res td{background:#eef4f0;}
 <div class="row">
   <button class="primary" id="btnNewKey">產生一把新金鑰</button>
   <span class="hint">或貼上已經有的：</span>
-  <input id="inSecret" placeholder="IWL1-XXXXX-XXXXX-XXXXX-XXXXX" style="font-family:var(--mono);padding:.4rem .7rem;border:1px solid var(--line);border-radius:8px;min-width:20rem">
+  <input id="inSecret" placeholder="IWL2-XXXXX-XXXXX-XXXXX-XXXXX" style="font-family:var(--mono);padding:.4rem .7rem;border:1px solid var(--line);border-radius:8px;min-width:20rem">
   <button id="btnUseSecret">使用</button>
 </div>
 <div id="keyOut" hidden>
   <p class="secret" id="secretTxt"></p>
-  <div class="two">
-    <figure><canvas id="cKeyCard"></canvas>
-      <figcaption><b>鑰圖</b>。同一把金鑰在圖裡存了三份：QR、明文、還有 PNG 的中繼資料。原檔、截圖、手機拍螢幕、甚至印出來，任何一種都還原得回來。</figcaption></figure>
-    <div>
-      <div class="row"><button class="primary" id="btnKeyDl">下載鑰圖</button>
-        <button id="btnLogo">加上我的 logo 當標籤</button></div>
-      <div class="card danger">
-        <p><b>這張圖就是鑰匙本身。</b>任何看到它的人，都能在別人的作品上蓋出我們的浮水印，宣稱那是我們做的。</p>
-        <p>警告是烙在像素裡的，不是寫在這個頁面上——說明沒人會看，但圖會跟著圖跑。哪天不小心把它貼出去，我們自己和看到的人都會先讀到那句話。</p>
-      </div>
-      <p class="hint">logo 只是標籤，讓我們在一資料夾長得一樣的 QR 裡分得出哪張是哪張。<b>它對演算法沒有任何貢獻</b>，這點下面會解釋。</p>
-    </div>
+  <figure><canvas id="cKeyCard"></canvas>
+    <figcaption><b>這就是鑰圖。它是鑰匙本身，不是「金鑰的說明書」。</b></figcaption></figure>
+  <div class="row"><button class="primary" id="btnKeyDl">下載鑰圖</button>
+    <button id="btnLogo">加上我的 logo 當標籤</button></div>
+
+  <h3>這張圖的哪些部分記錄了金鑰？</h3>
+  <table>
+    <tr><th>圖上的位置</th><th>存了什麼</th><th>能不能還原回金鑰</th></tr>
+    <tr><td>中間那行大字</td><td>金鑰的明文</td><td>能。用眼睛照著抄就行</td></tr>
+    <tr><td>左下角的 QR</td><td>同一串字</td><td>能。手機掃一下</td></tr>
+    <tr><td>PNG 的中繼資料<br><span class="hint">看不見，藏在檔案裡</span></td><td>同一串字</td>
+      <td>能。把原檔拖回<a href="#s7">步驟 7</a> 會自動讀出來</td></tr>
+    <tr><td><b>整張圖的底紋，和中間那塊色板</b></td><td>這把金鑰算出來的<b>指紋</b></td>
+      <td><b>還原不出那串字，但已經足夠拿去蓋章了</b></td></tr>
+  </table>
+  <p>前三份是<b>故意重複的</b>：字可能被裁掉、QR 可能拍糊、中繼資料一上傳到社群平台就會被洗掉。任何一份活著，這把金鑰就救得回來。</p>
+
+  <div class="card danger">
+    <p><b>最後一列最容易被忽略。</b>蓋章和驗證真正需要的，不是那串字，是那串字算出來的 <b>256 個 ±1</b>。底紋就是它放大之後的樣子。</p>
+    <p>實測（2026-08-14）：<b>把明文和 QR 全部遮掉、只看底紋</b>，還原出 82% 的節點，拿去驗一張用真金鑰蓋的圖——</p>
+    <table>
+      <tr><th>用什麼去驗</th><th class="num">z</th><th class="num">峰值旁瓣比</th><th>結果</th></tr>
+      <tr><td>真金鑰</td><td class="num">32.6</td><td class="num">11.6</td><td>檢出</td></tr>
+      <tr><td><b>只從底紋偷出來的指紋</b></td><td class="num">23.9</td><td class="num">10.2</td><td><b>照樣檢出</b></td></tr>
+      <tr><td>隨機金鑰（對照）</td><td class="num">6.6</td><td class="num">3.6</td><td>未檢出</td></tr>
+    </table>
+    <p><b>所以把鑰圖打碼、只露出底紋，一樣等於把金鑰交出去。</b>這張圖沒有「露一半」這種事。</p>
   </div>
+
+  <div class="card danger">
+    <p><b>被別人看到會怎樣？</b>他能在<b>任何一張圖</b>上蓋出跟我們一模一樣的浮水印，然後宣稱那是他做的。
+    而驗證會回答「檢出」——因為驗證只能回答<b>「這張圖蓋過這把金鑰」</b>，它回答不了「是誰蓋的」。這就是為什麼金鑰外流等於整套機制失效。</p>
+    <p><b>弄丟會怎樣？</b>就證明不了了。沒有伺服器、沒有備份、沒有「忘記密碼」——這也是為什麼同一把金鑰要在圖裡存三份。</p>
+    <p>警告是<b>烙在像素裡</b>的，不是寫在這個頁面上。說明沒人會看，但圖會跟著圖跑：哪天不小心把它貼出去，我們自己和看到的人都會先讀到那句話。</p>
+  </div>
+  <p class="hint"><b>logo 完全不是必要的</b>，加不加都不影響任何事。它純粹是標籤，讓我們在一資料夾長得一樣的鑰圖裡分得出哪張是哪張。
+  <b>它對演算法零貢獻</b>——至於「為什麼不能乾脆拿 logo 當金鑰」，<a href="#v1box">附錄</a>有可以動手跑的對照。</p>
 </div>
 
 <h2 id="s2"><span class="step">2</span>金鑰長成什麼樣的「場」</h2>
 <p>把金鑰餵給一個亂數產生器，得到 16×16 個 <code>+1</code> 或 <code>−1</code>。這就是我們的指紋。</p>
 <p class="hint">這裡的亂數產生器是<b>確定性</b>的——看起來很亂，但<b>同樣的金鑰永遠得到同樣的結果</b>。不然今天蓋的圖，明天就驗不出來了。
 代價是換一個字元就完全不同，所以金鑰要一個字不差。</p>
+<div class="card warn">
+  <p><b>第五次做壞的地方，是使用者問出來的。</b>問題是：「金鑰只有 20 個字元，指紋有 16×16 格，會不會很容易重複？」</p>
+  <p>光看大小不會：20 個字元的 Crockford base32 是 100 bit（2¹⁰⁰ 種），指紋是 256 格 ±1（2²⁵⁶ 種），指紋空間大得多。
+  <b>但中間那個亂數產生器把它掐掉了。</b>舊寫法是先算出一個 32 bit 的雜湊，再從它連續吐四個數字去啟動亂數產生器——
+  看起來有 128 bit，其實全部由那 32 bit 決定。<b>所以指紋最多只有 2³² 種。</b></p>
+  <p>實測 30 萬把不同的金鑰，撞出 <b>9～12 組完全一樣的指紋</b>（2³² 的理論期望值是 10.5 組）。
+  修法是改成跑四次獨立的雜湊、每次都吃過完整的金鑰；同樣 30 萬把，<b>碰撞 0 組</b>。
+  <br>新產生的金鑰開頭是 <code>IWL2-</code>。<b>舊的 <code>IWL1-</code> 走原本的路徑，以前蓋過的圖照樣驗得出來</b>——
+  修一個安全問題卻讓別人的舊作品驗不出來，那是另一種做壞。出處：<code>test/keyspace.mjs</code>。</p>
+</div>
 <div class="grid" id="fieldOut" hidden>
   <figure class="px"><canvas id="cFp"></canvas><figcaption>① <b>指紋</b>：16×16 個 ±1。藍=+1、黃=−1</figcaption></figure>
   <figure><canvas id="cField"></canvas><figcaption>② <b>平滑場</b>：每 16 像素一個節點，中間的像素<b>慢慢過渡</b>過去，不是直接跳。直接跳的話，格子邊界會在平坦的底色上變成一條看得見的線——那是我們做壞的第一版。<span class="hint">過渡曲線叫 smoothstep：頭尾平緩、中間快，像車子起步和煞車</span></figcaption></figure>
@@ -424,7 +459,7 @@ table.calc tr.res td{background:#eef4f0;}
   </div>
   <div>
     <div class="drop" id="dropCheckKey"><span id="ckKeyTxt">我們的鑰圖</span><span class="hint"><br>拖鑰圖進來，會自動讀出金鑰</span></div>
-    <div class="row"><input id="ckSecret" placeholder="或直接貼上 IWL1-…" style="font-family:var(--mono);padding:.4rem .7rem;border:1px solid var(--line);border-radius:8px;flex:1;min-width:12rem"></div>
+    <div class="row"><input id="ckSecret" placeholder="或直接貼上 IWL2-…" style="font-family:var(--mono);padding:.4rem .7rem;border:1px solid var(--line);border-radius:8px;flex:1;min-width:12rem"></div>
     <p class="hint" id="ckKeyInfo"></p>
   </div>
 </div>
@@ -450,7 +485,19 @@ table.calc tr.res td{background:#eef4f0;}
   <p><b>開源，所以拔得掉。</b>防的是順手盜用，不是防偽。原始碼就在下面的連結裡。</p>
   <p><b>金鑰外流就全毀。</b>拿到我們金鑰的人可以在任何圖上蓋出我們的浮水印，宣稱那是我們做的。這是這套機制唯一的信任根。</p>
   <p><b>金鑰弄丟就證明不了。</b>我們沒有伺服器、沒有備份、沒有「忘記密碼」。所以鑰圖裡存了三份。</p>
-  <p><b>同一把金鑰蓋很多張圖，理論上可以被反推。</b>指紋固定、內容不相干，蒐集夠多張取平均，內容互相抵消、指紋會浮出來（平均攻擊）。真的在意就一件作品一把金鑰。</p>
+  <p><b>拿到一張你蓋過的圖，就能把場紋估出來——不需要金鑰，也不需要很多張。</b>
+  這一條原本寫的是「蒐集夠多張取平均才可能反推」，2026-08-14 量完發現講輕了：<b>一張就夠</b>。
+  因為場紋是平鋪的，攻擊者知道演算法（開源），就能做跟偵測器一樣的事——高通、把每個格子按 16 為週期折疊累加、取正負號。
+  畫面內容被高通殺掉又被折疊平均掉，場紋每一塊都同號，累加起來就浮出來了。</p>
+  <table>
+    <tr><th>他估出來之後能做什麼</th><th>實測</th></tr>
+    <tr><td>估中多少</td><td>約 <b>70%</b> 的節點（瞎猜是 50%）</td></tr>
+    <tr><td>拿去驗<b>另一張</b>同金鑰的圖</td><td>z 30–58、峰值旁瓣比 約 9，<b>檢出</b>——等於他手上有一把能用的金鑰</td></tr>
+    <tr><td>拿去把浮水印減掉</td><td>z 從 44 掉到 25，<b>原主人仍然驗得出來</b>——抹不乾淨</td></tr>
+  </table>
+  <p><b>這是平鋪式浮水印的結構性弱點，不是這份實作的疏忽</b>——文獻上早就記載自同步（平鋪）浮水印容易被估計攻擊，
+  而平鋪正是它能抗裁切的原因。兩者是同一件事的兩面。出處與可重跑的腳本：<code>test/estimate-attack.mjs</code>。
+  「一件作品一把金鑰」擋不住這一條（單張就夠），它只擋得住跨作品的關聯。</p>
   <p><b>高細節、高雜訊的圖蓋不上去。</b>2026-08-13 量到的：一張密集紋理的測試圖連原圖都驗不出來（z=6.1），不是被摧殘弄死的，是 ±2 的訊號從一開始就蓋不過那張圖本身的雜訊底。平滑的插畫、實拍照片、大面積淺色的商品圖都沒問題。</p>
   <p><b>裁切比想像中脆弱。</b>同一批測試裡，裁掉一半只有大面積淺色那張活得下來，平滑漸層與實拍照片都死了。留得住的關鍵是剩餘格數<b>加上</b>雜訊底夠低。</p>
   <p><b>旋轉會殺死它。</b>我們沒有搜尋角度，這是明確的已知限制。</p>
@@ -459,16 +506,39 @@ table.calc tr.res td{background:#eef4f0;}
 </div>
 
 <h2>站在誰的肩膀上</h2>
-<p>技術不新。這是 <b>spread spectrum watermarking</b>（擴頻浮水印），奠基論文是 Cox、Kilian、Leighton、Shamoon 1997 年發表於 IEEE Transactions on Image Processing 的
-<i>Secure Spread Spectrum Watermarking for Multimedia</i>。核心想法一樣：把振幅很低的偽隨機圖樣鋪滿整張圖，偵測時用相關性比對。他們埋在 DCT 係數，我們埋在空間域的藍色通道。</p>
-<p>其他每一塊也都是既有技術：「相乘再相加」這種偵測方式在訊號處理裡叫<b>匹配濾波</b>（matched filter），是教科書內容；峰值旁瓣比（peak-to-sidelobe ratio）是雷達的標準判準；利用人眼對藍色空間解析度低是感知模型浮水印的常見手法；平鋪加暴力搜尋做同步是對抗裁切的標準做法；有序抖動是印刷業的老技術。</p>
+<p>這裡沒有任何一塊是新的。把出處列出來不是客套，是因為<b>你可以直接去讀原文</b>——這頁只是把這些東西接起來、做成看得見、可以動手跑的樣子。</p>
+<table>
+  <tr><th>這頁用的</th><th>出自哪裡</th></tr>
+  <tr><td>把振幅很低的偽隨機圖樣鋪滿整張圖，偵測時用相關性比對</td>
+      <td>Cox、Kilian、Leighton、Shamoon（1997），<a href="https://www.ee.columbia.edu/~ywang/MSS/HW2/CoxSpectrumWatermarking.pdf" target="_blank" rel="noopener">Secure Spread Spectrum Watermarking for Multimedia</a>，
+      IEEE Transactions on Image Processing 6(12), 1673–1687。<br>
+      <span class="hint"><b>差別：</b>他們埋在 DCT 係數，而且論文裡抗裁切、縮放、旋轉那部分<b>需要拿原圖來對位</b>；這頁埋在空間域的藍色通道，驗證時不需要原圖。</span></td></tr>
+  <tr><td>只改藍色通道，振幅跟著亮度調整</td>
+      <td>Kutter、Jordan、Bossen（1997），<a href="https://www.spiedigitallibrary.org/conference-proceedings-of-spie/3022/0000/Digital-signature-of-color-images-using-amplitude-modulation/10.1117/12.263442.short" target="_blank" rel="noopener">Digital signature of color images using amplitude modulation</a>，SPIE 3022。<br>
+      <span class="hint"><b>這是跟這頁最接近的前人工作</b>：一樣是空間域、一樣只動藍色通道、一樣讓振幅跟著亮度走、一樣用祕密金鑰決定圖樣。</span></td></tr>
+  <tr><td>「逐格相乘再全部加起來」的偵測方式</td>
+      <td>訊號偵測理論裡的<a href="https://en.wikipedia.org/wiki/Matched_filter" target="_blank" rel="noopener">匹配濾波</a>（matched filter），教科書內容</td></tr>
+  <tr><td>用峰值旁瓣比當第二道判準</td>
+      <td>雷達與相關濾波器的標準做法。我們用的公式（峰值 − 旁瓣平均）÷ 旁瓣標準差，
+      跟 <a href="https://impact.ornl.gov/en/publications/visual-object-tracking-using-adaptive-correlation-filters/" target="_blank" rel="noopener">MOSSE 追蹤器</a>（Bolme 等人，2010）判斷「追丟了沒」用的是同一條</td></tr>
+  <tr><td>平鋪 + 暴力搜尋位移來對齊</td>
+      <td>對抗裁切的標準做法。<b>代價也是文獻上早就知道的</b>：平鋪的週期結構會被自相關看出來，所以可以被估計攻擊——就是<a href="#limit">誠實的界限</a>裡量到的那一條</td></tr>
+  <tr><td>取整數之前先抖動</td>
+      <td><a href="https://en.wikipedia.org/wiki/Ordered_dithering" target="_blank" rel="noopener">有序抖動</a>（ordered dithering），印刷業用網點印照片用了幾十年</td></tr>
+</table>
+
+<h3>那這一頁有什麼是自己的？</h3>
+<p><b>演算法上沒有。</b>如果問題是「有沒有人這樣做過」——有，而且是 1997 年。上面前兩篇加起來，幾乎就是這頁在做的事。
+說這是獨創、或說「沒有人這樣做」，都不成立。</p>
+<p>自己的部分是<b>工程取捨和量測</b>：±2 的振幅、16 像素一個節點、近白近黑減半、抖動、雙門檻判定、
+把位移搜尋折疊成環狀互相關（數值一位不差、快 40 倍），以及那些做壞的版本被淘汰的過程。
+<b>這頁上每一個數字都附了可以自己重跑的腳本</b>，不是從論文抄來的——包括那些對自己不利的（裁切比想像中脆弱、單張圖就能估出場紋、舊版的指紋空間只有 2³²）。</p>
 <table>
   <tr><th>專案</th><th>做法</th><th>跟這裡的差別</th></tr>
-  <tr><td><a href="https://github.com/ShieldMnt/invisible-watermark">invisible-watermark</a></td><td>Python，dwtDct／dwtDctSvd／RivaGAN</td><td>載得動 ID，可溯源；抗裁切與縮放較弱</td></tr>
-  <tr><td><a href="https://github.com/hvuhsg/hiddenmark">hiddenmark</a></td><td>瀏覽器端，傅立葉頻域環狀調變</td><td>方向最接近，頻域天生較抗縮放旋轉，實作複雜</td></tr>
-  <tr><td><a href="https://github.com/zhensherlock/watermark-js-plus">watermark-js-plus</a></td><td>瀏覽器端，可見＋盲浮水印</td><td>功能最全，目標是保護網頁與文件</td></tr>
+  <tr><td><a href="https://github.com/ShieldMnt/invisible-watermark" target="_blank" rel="noopener">invisible-watermark</a></td><td>Python，dwtDct／dwtDctSvd／RivaGAN</td><td>載得動 ID，可溯源；抗裁切與縮放較弱</td></tr>
+  <tr><td><a href="https://github.com/hvuhsg/hiddenmark" target="_blank" rel="noopener">hiddenmark</a></td><td>瀏覽器端，傅立葉頻域環狀調變</td><td>方向最接近，頻域天生較抗縮放旋轉，實作複雜</td></tr>
+  <tr><td><a href="https://github.com/zhensherlock/watermark-js-plus" target="_blank" rel="noopener">watermark-js-plus</a></td><td>瀏覽器端，可見＋盲浮水印</td><td>功能最全，目標是保護網頁與文件</td></tr>
 </table>
-<p>這裡自己的只有工程取捨與實測：±2 的振幅、16 像素節點、近白減半、抖動、雙門檻判定，以及那些做壞的版本被淘汰的過程。承認站在別人肩膀上，反而讓實測數據更可信。</p>
 
 <footer>
   <p class="promo"><a href="https://github.com/yazelin/invisible-watermark-lab">原始碼與實測數據</a>

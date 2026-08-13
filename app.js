@@ -10,7 +10,7 @@
 
   // ── 步驟 1:金鑰 ──
   function useSecret(s) {
-    if (!P.isSecret(s)) { alert('金鑰格式不對,應該長得像 IWL1-XXXXX-XXXXX-XXXXX-XXXXX'); return; }
+    if (!P.isSecret(s)) { alert('金鑰格式不對,應該長得像 IWL2-XXXXX-XXXXX-XXXXX-XXXXX(舊的 IWL1- 也還能用)'); return; }
     secret = String(s).trim().toUpperCase();
     nodes = P.nodesFromSecret(secret, N);
     $('keyOut').hidden = false; $('fieldOut').hidden = false;

@@ -72,7 +72,7 @@ try {
              stampShown: !document.getElementById('stampOut').hidden,
              secret: document.getElementById('secretTxt').textContent };
   })()`);
-  ok('金鑰產生了,格式正確', /^IWL1(-[0-9A-HJKMNP-TV-Z]{5}){4}$/.test(stamp.secret), stamp.secret);
+  ok('金鑰產生了,格式正確', /^IWL[12](-[0-9A-HJKMNP-TV-Z]{5}){4}$/.test(stamp.secret), stamp.secret);
   ok('鑰圖畫出來了', stamp.keyShown);
   ok('指紋/場/鋪滿/振幅四張都畫了', stamp.fieldShown);
   ok('蓋章結果有顯示', stamp.stampShown);
@@ -186,6 +186,69 @@ try {
   ok('金鑰字串的指紋強度仍是最高的', rnd[0] >= wht[0], wht[0] + ' vs ' + rnd[0]);
   ok('三種指紋裁 75% 都還活著(效能不是放棄 logo 的理由)', raw[3] > 6 && wht[3] > 6 && rnd[3] > 6,
     [raw[3], wht[3], rnd[3]].join(' / '));
+
+  /* ── 鑰圖的哪些部分洩漏金鑰? ──
+     使用者問「鑰圖上哪些部分記錄了金鑰」時才發現要量的。結論分兩層:
+       色板 —— 它就是指紋本身,讀出來 100%,等於整把金鑰
+       底紋 —— 同一個場的低對比版本(alpha 0.08),單獨讀不夠,但它不是安全機制
+     所以「把明文和 QR 打碼」沒有意義,頁面上那句是量過的。 */
+  console.log('\n[7] 鑰圖的哪些部分會洩漏金鑰');
+  const leak = await run(`(()=>{
+    const N=16,P=IWL,F=IWL_FIELD,K=IWL_KEY;
+    const secret=K.newSecret(), nodes=P.nodesFromSecret(secret,N);
+    const card=K.render(secret,null,N), W=card.width, H=card.height;
+    const d=F.ctxOf(card).getImageData(0,0,W,H).data;
+    const at=(px,py)=>{const p=((py|0)*W+(px|0))*4; return {r:d[p],g:d[p+1],b:d[p+2]};};
+
+    // 一、色板:64+150+28 起,150 見方,每格 8px、內縮 11(見 keyimage.js render)
+    const SX=64+150+28, SY=350, CP=8, OFF=11;
+    const fromSwatch=new Float64Array(N*N);
+    let s1=0;
+    for(let j=0;j<N;j++)for(let i=0;i<N;i++){
+      const c=at(SX+OFF+i*CP+3, SY+OFF+j*CP+3);
+      fromSwatch[j*N+i] = c.b>c.r ? 1 : -1;      // 藍=+1、黃=−1
+      if(fromSwatch[j*N+i]===P.nodeAt(nodes,N,i,j)) s1++;
+    }
+    // 二、只有底紋:避開頁首、金鑰面板、QR/色板/說明、警告框、頁尾
+    const clean=(px,py)=> (py>=310&&py<=344) || (py>=32&&py<=48) || (py>=144&&py<=170) || (py>=628&&py<=644);
+    const vote=new Float64Array(N*N);
+    for(let py=0;py<H;py+=16)for(let px=0;px<W;px+=16){
+      if(!clean(py,py)&&!clean(px,py)) continue;
+      const c=at(px,py);
+      vote[(Math.floor(py/16)%N)*N+(Math.floor(px/16)%N)] += c.b-(c.r+c.g)/2;
+    }
+    const fromField=new Float64Array(N*N);
+    let s2=0, covered=0;
+    for(let i=0;i<N*N;i++){
+      if(vote[i]!==0) covered++;
+      fromField[i]=vote[i]>0?1:-1;
+      if(fromField[i]===nodes[i]) s2++;
+    }
+    // 三、拿還原出來的指紋去驗一張用真金鑰蓋的圖
+    const w=640,h=480,c=F.mkCanvas(w,h),x=F.ctxOf(c);
+    const g=x.createLinearGradient(0,0,w,h); g.addColorStop(0,'#2b4a6f'); g.addColorStop(1,'#f0d9b5');
+    x.fillStyle=g; x.fillRect(0,0,w,h);
+    const im=x.getImageData(0,0,w,h);
+    P.embed(im.data,w,h,nodes,N);
+    const pick=(o)=>({z:+o.z.toFixed(1),psr:+o.psr.toFixed(1),found:o.found});
+    return {
+      swatchRate:+(s1/(N*N)*100).toFixed(0), fieldRate:+(s2/(N*N)*100).toFixed(0),
+      fieldCovered:+(covered/(N*N)*100).toFixed(0),
+      real:pick(P.detect(im.data,w,h,nodes,N)),
+      swatch:pick(P.detect(im.data,w,h,fromSwatch,N)),
+      field:pick(P.detect(im.data,w,h,fromField,N)),
+      rand:pick(P.detect(im.data,w,h,P.nodesFromSecret(K.newSecret(),N),N))};
+  })()`);
+  const line = (n, r, o) => console.log('    ' + n.padEnd(22) + '還原 ' + String(r).padStart(3) + '%'
+    + '　z=' + String(o.z).padStart(5) + '　峰值旁瓣比=' + String(o.psr).padStart(5) + '　' + (o.found ? '檢出' : '未檢出'));
+  line('真金鑰(對照)', 100, leak.real);
+  line('從色板讀出來', leak.swatchRate, leak.swatch);
+  line('只從底紋讀出來', leak.fieldRate, leak.field);
+  line('隨機金鑰(對照)', 0, leak.rand);
+  console.log('    底紋取樣只覆蓋到 ' + leak.fieldCovered + '% 的格子（其餘被文字與面板蓋住）');
+  ok('色板等於整把金鑰:讀出來就能驗', leak.swatchRate > 95 && leak.swatch.found,
+    leak.swatchRate + '%，z=' + leak.swatch.z);
+  ok('隨機金鑰對照組驗不出來(證明上一項不是隨便都會過)', !leak.rand.found, 'z=' + leak.rand.z);
 
   console.log('\n  跟預期不符:' + surprises + ' 項' + (surprises ? '(上面標「不符」的,那幾行是新資訊,要回頭改預期或改演算法)' : ''));
 } finally {
